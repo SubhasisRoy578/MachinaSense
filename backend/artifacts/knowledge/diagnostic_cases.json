@@ -1,0 +1,34 @@
+[
+  {
+    "id": "DC-FD001-001-FALLBACK",
+    "machineId": "FD001-001",
+    "machineName": "Turbofan Engine FD001-001",
+    "status": "open",
+    "severity": "critical",
+    "trigger": "RUL forecast (110.2 cycles) & Isolation Forest anomaly score (critical)",
+    "finding": "High-Pressure Compressor (HPC) & Bearing Degradation. PyTorch LSTM RUL: 110.2 cycles remaining.",
+    "explanation": "Based on retrieved evidence from 'C-MAPSS FD001 Turbofan Maintenance & Degradation Guide' (Section 1.2 - High-Pressure Compressor Degradation), elevated compressor temperatures (s3) and acoustic anomaly score (critical) correlate with thermal degradation and blade clearance wear.",
+    "evidence": [
+      {
+        "documentId": "DOC-901",
+        "documentTitle": "C-MAPSS FD001 Turbofan Maintenance & Degradation Guide",
+        "section": "Section 1.2 - High-Pressure Compressor Degradation",
+        "page": 1,
+        "snippet": "High-Pressure Compressor (HPC) degradation is the primary failure mode in FD001 turbofan engines. Symptoms include elevated HPC outlet temperature (sensor s3), LPT outlet temperature (sensor s4), and static pressure fluctuations (sensor s11). When HPC outlet temperature s3 exceeds 1600 \u00b0R and RUL fa...",
+        "relevance": 0.1848
+      },
+      {
+        "documentId": "DOC-902",
+        "documentTitle": "Spindle & Compressor Shaft Bearing Specifications",
+        "section": "Section 4.2 - Bearing Wear & Acoustic Resonance",
+        "page": 1,
+        "snippet": "High frequency resonance (>2kHz) on compressor shaft bearings often precedes catastrophic spalling by 7 to 14 flight cycles. Elevated LPC outlet temperature (sensor s2 > 645 \u00b0R) and bypass duct pressure (sensor s6 > 21.6 psia) confirm thermal expansion in bearing housing assemblies.",
+        "relevance": 0.1537
+      }
+    ],
+    "recommendedAction": "Schedule immediate HPC stator vane inspection and bearing replacement. Limit engine load until maintenance.",
+    "confidence": 91,
+    "generatorUsed": "Grounded Rule-Based Fallback",
+    "isGroundedFallback": true
+  }
+]

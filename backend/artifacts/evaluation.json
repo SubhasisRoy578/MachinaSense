@@ -1,0 +1,25 @@
+{
+  "rul_models": {
+    "random_forest": {
+      "mae": 13.2202,
+      "rmse": 18.103,
+      "r2": 0.8102
+    },
+    "lstm": {
+      "mae": 11.3005,
+      "rmse": 15.0027,
+      "r2": 0.8697
+    }
+  },
+  "anomaly_detection": {
+    "method": "Isolation Forest",
+    "scoring": "Inverted decision function (higher = more anomalous)",
+    "severity_thresholds": {
+      "healthy": "<= 0.50",
+      "medium": "> 0.50",
+      "high": "> 0.60",
+      "critical": "> 0.75"
+    },
+    "note": "Unsupervised anomaly detection trained on healthy operational cycles (RUL > 100). FD001 dataset has no ground-truth anomaly labels."
+  }
+}

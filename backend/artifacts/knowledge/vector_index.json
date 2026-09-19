@@ -1,0 +1,106 @@
+{
+  "method": "TF-IDF + Cosine Similarity Vector Search",
+  "total_documents": 6,
+  "total_chunks": 11,
+  "chunks": [
+    {
+      "chunk_id": "DOC-901_chunk_1",
+      "document_id": "DOC-901",
+      "document_name": "C-MAPSS FD001 Turbofan Maintenance & Degradation Guide",
+      "page": 1,
+      "section": "Section 1.2 - High-Pressure Compressor Degradation",
+      "text": "High-Pressure Compressor (HPC) degradation is the primary failure mode in FD001 turbofan engines. Symptoms include elevated HPC outlet temperature (sensor s3), LPT outlet temperature (sensor s4), and static pressure fluctuations (sensor s11). When HPC outlet temperature s3 exceeds 1600 \u00b0R and RUL falls below 30 cycles, immediate inspection of HPC stator vanes and blade tip clearances is required.",
+      "word_count": 62
+    },
+    {
+      "chunk_id": "DOC-901_chunk_2",
+      "document_id": "DOC-901",
+      "document_name": "C-MAPSS FD001 Turbofan Maintenance & Degradation Guide",
+      "page": 2,
+      "section": "Section 2.4 - Fan & Core Speed Calibration Bounds",
+      "text": "Physical and corrected fan speeds (sensors s8 and s13) operate nominally near 2388 RPM. Deviations in corrected core speed (sensor s14 below 8150 RPM) alongside elevated bleed enthalpy (sensor s17 above 394 BTU/lb) indicate thermal degradation and air leakage in HPT cooling seals.",
+      "word_count": 45
+    },
+    {
+      "chunk_id": "DOC-901_chunk_3",
+      "document_id": "DOC-901",
+      "document_name": "C-MAPSS FD001 Turbofan Maintenance & Degradation Guide",
+      "page": 3,
+      "section": "Section 3.1 - Isolation Forest Anomaly Thresholds",
+      "text": "Isolation Forest anomaly scores exceeding 0.60 indicate significant deviation from healthy baseline flight cycles. Anomaly scores greater than 0.75 signal critical acoustic or thermal instability requiring preventive maintenance before RUL drops below 15 cycles.",
+      "word_count": 37
+    },
+    {
+      "chunk_id": "DOC-902_chunk_1",
+      "document_id": "DOC-902",
+      "document_name": "Spindle & Compressor Shaft Bearing Specifications",
+      "page": 1,
+      "section": "Section 4.2 - Bearing Wear & Acoustic Resonance",
+      "text": "High frequency resonance (>2kHz) on compressor shaft bearings often precedes catastrophic spalling by 7 to 14 flight cycles. Elevated LPC outlet temperature (sensor s2 > 645 \u00b0R) and bypass duct pressure (sensor s6 > 21.6 psia) confirm thermal expansion in bearing housing assemblies.",
+      "word_count": 44
+    },
+    {
+      "chunk_id": "DOC-903_chunk_1",
+      "document_id": "DOC-903",
+      "document_name": "CNC & Turbofan Fuel System Troubleshooting Manual",
+      "page": 1,
+      "section": "Troubleshooting Chart B - Fuel Ratio & Bypass Flow",
+      "text": "Erratic fuel flow ratio (sensor s12) and bypass ratio fluctuations (sensor s15) indicate metering valve contamination or fuel pump cavitation. Flush fuel supply lines and recalibrate flow control valves during scheduled maintenance.",
+      "word_count": 35
+    },
+    {
+      "chunk_id": "DOC-904_chunk_1",
+      "document_id": "DOC-904",
+      "document_name": "Test Manual",
+      "page": 1,
+      "section": "Paragraph 1",
+      "text": "Section 1.1 - Bleed Valve Maintenance",
+      "word_count": 6
+    },
+    {
+      "chunk_id": "DOC-904_chunk_2",
+      "document_id": "DOC-904",
+      "document_name": "Test Manual",
+      "page": 2,
+      "section": "Paragraph 2",
+      "text": "Check bleed valves for contamination.",
+      "word_count": 5
+    },
+    {
+      "chunk_id": "DOC-905_chunk_1",
+      "document_id": "DOC-905",
+      "document_name": "Test Manual",
+      "page": 1,
+      "section": "Paragraph 1",
+      "text": "Section 1.1 - Bleed Valve Maintenance",
+      "word_count": 6
+    },
+    {
+      "chunk_id": "DOC-905_chunk_2",
+      "document_id": "DOC-905",
+      "document_name": "Test Manual",
+      "page": 2,
+      "section": "Paragraph 2",
+      "text": "Check bleed valves for contamination.",
+      "word_count": 5
+    },
+    {
+      "chunk_id": "DOC-906_chunk_1",
+      "document_id": "DOC-906",
+      "document_name": "Test Manual",
+      "page": 1,
+      "section": "Paragraph 1",
+      "text": "Section 1.1 - Bleed Valve Maintenance",
+      "word_count": 6
+    },
+    {
+      "chunk_id": "DOC-906_chunk_2",
+      "document_id": "DOC-906",
+      "document_name": "Test Manual",
+      "page": 2,
+      "section": "Paragraph 2",
+      "text": "Check bleed valves for contamination.",
+      "word_count": 5
+    }
+  ]
+}

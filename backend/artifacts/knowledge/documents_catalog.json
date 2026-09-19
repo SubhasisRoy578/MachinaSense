@@ -1,0 +1,62 @@
+[
+  {
+    "id": "DOC-901",
+    "title": "C-MAPSS FD001 Turbofan Maintenance & Degradation Guide",
+    "type": "PDF",
+    "size": 14500000,
+    "uploadDate": "2026-09-18T19:53:26.202087",
+    "processingStatus": "ready",
+    "indexedChunks": 4,
+    "sourceCategory": "Manual"
+  },
+  {
+    "id": "DOC-902",
+    "title": "Spindle & Compressor Shaft Bearing Specifications",
+    "type": "PDF",
+    "size": 2300000,
+    "uploadDate": "2026-09-18T19:53:26.202100",
+    "processingStatus": "ready",
+    "indexedChunks": 2,
+    "sourceCategory": "Specification"
+  },
+  {
+    "id": "DOC-903",
+    "title": "CNC & Turbofan Fuel System Troubleshooting Manual",
+    "type": "DOCX",
+    "size": 850000,
+    "uploadDate": "2026-09-18T19:53:26.202103",
+    "processingStatus": "ready",
+    "indexedChunks": 2,
+    "sourceCategory": "Manual"
+  },
+  {
+    "id": "DOC-904",
+    "title": "Test Manual",
+    "type": "TXT",
+    "size": 76,
+    "uploadDate": "2026-09-18T19:54:18.905925",
+    "processingStatus": "ready",
+    "indexedChunks": 2,
+    "sourceCategory": "Manual"
+  },
+  {
+    "id": "DOC-905",
+    "title": "Test Manual",
+    "type": "TXT",
+    "size": 76,
+    "uploadDate": "2026-09-18T21:49:51.782721",
+    "processingStatus": "ready",
+    "indexedChunks": 2,
+    "sourceCategory": "Manual"
+  },
+  {
+    "id": "DOC-906",
+    "title": "Test Manual",
+    "type": "TXT",
+    "size": 76,
+    "uploadDate": "2026-09-19T17:39:32.553832",
+    "processingStatus": "ready",
+    "indexedChunks": 2,
+    "sourceCategory": "Manual"
+  }
+]

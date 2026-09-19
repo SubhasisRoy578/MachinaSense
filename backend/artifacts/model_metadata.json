@@ -1,0 +1,30 @@
+{
+  "dataset": "C-MAPSS FD001",
+  "training_date": "2026-09-18T19:09:47.527990",
+  "random_seed": 42,
+  "models": {
+    "baseline": "Random Forest Regressor (n_estimators=100, max_depth=10)",
+    "temporal": "PyTorch LSTM (hidden_size=64, num_layers=2, dropout=0.2)",
+    "anomaly": "Isolation Forest (contamination=0.05)"
+  },
+  "features": [
+    "s2",
+    "s3",
+    "s4",
+    "s6",
+    "s7",
+    "s8",
+    "s9",
+    "s11",
+    "s12",
+    "s13",
+    "s14",
+    "s15",
+    "s17",
+    "s20",
+    "s21"
+  ],
+  "preprocessing": "MinMaxScaler",
+  "window_size": 30,
+  "rul_cap": 125
+}
