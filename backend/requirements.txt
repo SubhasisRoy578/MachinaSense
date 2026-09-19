@@ -12,3 +12,7 @@ requests
 pypdf
 python-docx
 python-multipart
+sqlalchemy
+psycopg2-binary
+pyjwt[crypto]
+cryptography
