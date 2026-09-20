@@ -33,6 +33,7 @@ class Machine(Base):
     anomalies = relationship("AnomalyEvent", back_populates="machine", cascade="all, delete-orphan")
     maintenance_tasks = relationship("MaintenanceTask", back_populates="machine", cascade="all, delete-orphan")
     diagnostics = relationship("DiagnosticCase", back_populates="machine", cascade="all, delete-orphan")
+    conversations = relationship("CopilotConversation", back_populates="machine")
 
 class SensorReading(Base):
     __tablename__ = "sensor_data"
@@ -143,6 +144,7 @@ class CopilotConversation(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="conversations")
+    machine = relationship("Machine", back_populates="conversations")
     messages = relationship("CopilotMessage", back_populates="conversation", cascade="all, delete-orphan", order_by="CopilotMessage.created_at")
 
 class CopilotMessage(Base):
@@ -172,3 +174,16 @@ class KnowledgeDoc(Base):
     upload_date = Column(DateTime, default=datetime.datetime.utcnow)
     source_category = Column(String, default="Manual")
     indexed_chunks = Column(Integer, default=0)
+    chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+
+    id = Column(String, primary_key=True)
+    document_id = Column(String, ForeignKey("documents.id"), index=True, nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    page = Column(Integer, default=1)
+    section = Column(String, default="Document")
+    content = Column(Text, nullable=False)
+
+    document = relationship("KnowledgeDoc", back_populates="chunks")

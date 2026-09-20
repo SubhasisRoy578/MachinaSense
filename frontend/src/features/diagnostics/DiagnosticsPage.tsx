@@ -16,10 +16,12 @@ export function DiagnosticsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [createMachineId, setCreateMachineId] = useState('');
+  const [error, setError] = useState('');
 
   const fetchCases = async () => {
     setLoading(true);
     try {
+      setError('');
       const data = await api.diagnostics.listCases();
       if (machineFilter) {
         setCases(data.filter(c => c.machineId === machineFilter));
@@ -28,6 +30,7 @@ export function DiagnosticsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch diagnostics", error);
+      setError(error instanceof Error ? error.message : 'Diagnostics are unavailable.');
     } finally {
       setLoading(false);
     }
@@ -46,6 +49,7 @@ export function DiagnosticsPage() {
       setCreateMachineId('');
     } catch (error) {
       console.error("Failed to create diagnostic case", error);
+      setError(error instanceof Error ? error.message : 'Unable to create a diagnostic.');
     } finally {
       setCreating(false);
     }
@@ -71,7 +75,7 @@ export function DiagnosticsPage() {
         <div className="flex items-center gap-2">
           <input
             type="text"
-            placeholder="Machine ID (e.g. FD001-001)"
+            placeholder="Your machine ID"
             value={createMachineId}
             onChange={(e) => setCreateMachineId(e.target.value)}
             className="bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent w-48"
@@ -96,6 +100,7 @@ export function DiagnosticsPage() {
           <button onClick={() => navigate('/diagnostics')} className="text-xs underline hover:text-accent/80">Clear Filter</button>
         </div>
       )}
+      {error && <div className="rounded border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">{error}</div>}
 
       {/* KPI Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -158,7 +163,7 @@ export function DiagnosticsPage() {
                 ) : cases.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">
-                      No active diagnostic investigations.
+                      No diagnostic investigations yet. Select one of your machines and run an evidence-bound diagnostic.
                     </td>
                   </tr>
                 ) : (
@@ -203,13 +208,12 @@ export function DiagnosticsPage() {
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
                             <BrainCircuit className="w-3 h-3" />
                             {diag.generatorUsed.includes('Gemini') ? 'Gemini RAG' : 
-                             diag.generatorUsed.includes('OpenAI') ? 'GPT RAG' :
-                             diag.generatorUsed.includes('Mock') ? 'Mock' : 'LLM RAG'}
+                             diag.generatorUsed.includes('Grok') ? 'Grok' : 'Grounded analysis'}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-slate-800/60 text-slate-400 border border-slate-700">
                             <BrainCircuit className="w-3 h-3" />
-                            Mock
+                            No provider metadata
                           </span>
                         )}
                       </td>

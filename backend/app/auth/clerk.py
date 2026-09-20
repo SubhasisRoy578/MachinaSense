@@ -1,6 +1,5 @@
 import logging
 import jwt
-import httpx
 from typing import Optional, Dict, Any
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -13,7 +12,7 @@ logger = logging.getLogger("machinasense.auth")
 security = HTTPBearer(auto_error=False)
 
 # In-memory cache for Clerk JWKS keys
-_jwks_cache: Optional[Dict[str, Any]] = None
+_jwks_client: Optional[jwt.PyJWKClient] = None
 
 def get_current_user(
     request: Request,
@@ -24,7 +23,7 @@ def get_current_user(
     Verifies Clerk authentication token and returns the current authenticated User model.
     Enforces strict user identification and auto-provisions user row in database.
     """
-    # 1. Check for Authorization header
+    # Identity is never accepted from a browser-provided user_id.
     token = None
     if credentials:
         token = credentials.credentials
@@ -34,10 +33,6 @@ def get_current_user(
             token = auth_header.split(" ")[1]
 
     if not token:
-        # Development / Test fallback if no token provided and Clerk secret is not set
-        test_user_id = request.headers.get("X-Test-User-Id")
-        if test_user_id and (not settings.CLERK_SECRET_KEY or settings.DEBUG):
-            return _get_or_create_user(db, test_user_id, f"{test_user_id}@machinasense.io")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required. Please sign in.",
@@ -46,15 +41,20 @@ def get_current_user(
 
     # 2. Decode and verify Clerk JWT
     try:
-        # In test environments or when test tokens are used
-        if token.startswith("test_token_"):
+        # Deliberately narrow test seam; disabled outside the test environment.
+        if token.startswith("test_token_") and settings.ENVIRONMENT == "test":
             user_id = token.replace("test_token_", "")
             return _get_or_create_user(db, user_id, f"{user_id}@machinasense.test")
 
-        # Decode claims (Clerk tokens contain 'sub' as user_id)
-        # We verify unverified header & payload; if CLERK_SECRET_KEY is configured, we can verify signature
-        unverified_payload = jwt.decode(token, options={"verify_signature": False})
-        user_id = unverified_payload.get("sub")
+        if not settings.CLERK_JWKS_URL:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Clerk JWT verification is not configured.")
+        global _jwks_client
+        if _jwks_client is None:
+            _jwks_client = jwt.PyJWKClient(settings.CLERK_JWKS_URL)
+        signing_key = _jwks_client.get_signing_key_from_jwt(token)
+        header = jwt.get_unverified_header(token)
+        payload = jwt.decode(token, signing_key.key, algorithms=[header.get("alg", "RS256")], issuer=settings.CLERK_ISSUER or None, options={"verify_aud": False, "verify_iss": bool(settings.CLERK_ISSUER)})
+        user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,12 +63,12 @@ def get_current_user(
             )
 
         email = (
-            unverified_payload.get("email") or 
-            unverified_payload.get("primary_email_address") or 
+            payload.get("email") or
+            payload.get("primary_email_address") or
             f"{user_id}@user.machinasense.io"
         )
-        first_name = unverified_payload.get("first_name", "")
-        last_name = unverified_payload.get("last_name", "")
+        first_name = payload.get("first_name", "")
+        last_name = payload.get("last_name", "")
 
         return _get_or_create_user(db, user_id, email, first_name, last_name)
 

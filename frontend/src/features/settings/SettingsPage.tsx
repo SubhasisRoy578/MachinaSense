@@ -9,8 +9,8 @@ import {
 
 export function SettingsPage() {
   const [status, setStatus] = useState<SystemStatus>({
-    mode: 'mock',
-    label: 'DEVELOPMENT MOCK',
+    mode: 'error',
+    label: 'CONNECTING',
     modelsLoaded: false
   });
   const [modelData, setModelData] = useState<any>(null);
@@ -103,7 +103,7 @@ export function SettingsPage() {
               {status.mode === 'live_rag' && 'FastAPI live provider with ML models and LLM RAG engine active.'}
               {status.mode === 'live_fallback' && 'FastAPI live provider with ML models and Grounded Rule-Based Fallback active.'}
               {status.mode === 'live_no_rag' && 'FastAPI live provider active. Knowledge base index not yet populated.'}
-              {status.mode === 'mock' && 'Standalone development mock provider. No backend network dependency.'}
+              {status.mode === 'error' && 'Backend unavailable. No user data is displayed.'}
               {status.mode === 'error' && 'FastAPI backend unreachable at configured endpoint. Failing over safely.'}
             </p>
           </CardContent>
@@ -118,7 +118,7 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="text-sm font-mono text-primary bg-slate-950 px-3 py-1.5 rounded border border-slate-800 break-all mb-2">
-              {status.baseUrl || 'None (Standalone Mock)'}
+              {status.baseUrl || 'Not configured'}
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <span className="w-2 h-2 rounded-full inline-block bg-emerald-500"></span>
@@ -136,9 +136,9 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="text-sm font-bold text-primary mb-1">
-              {status.llmStatus === 'gemini' ? 'Google Gemini 1.5 Flash' :
-               status.llmStatus === 'openai' ? 'OpenAI GPT-4o Mini' :
-               'Deterministic Grounded Fallback'}
+              {status.llmStatus === 'gemini' ? 'Google Gemini' :
+               status.llmStatus === 'grok' ? 'xAI Grok' :
+               'Grounded deterministic fallback'}
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               {status.llmStatus === 'fallback' 

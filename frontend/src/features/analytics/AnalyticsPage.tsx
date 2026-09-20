@@ -7,7 +7,7 @@ import { Cpu, Activity, ShieldCheck, Database, Sliders, Layers } from 'lucide-re
 
 export function AnalyticsPage() {
   const [modelData, setModelData] = useState<any>(null);
-  const [systemStatus, setSystemStatus] = useState<SystemStatus>({ mode: 'mock', label: 'DEVELOPMENT MOCK' });
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>({ mode: 'error', label: 'CONNECTING' });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

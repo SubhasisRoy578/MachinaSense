@@ -13,11 +13,13 @@ class Settings:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
 
     # CORS configuration
-    _cors_env: str = os.getenv("CORS_ORIGINS", "*")
+    _cors_env: str = os.getenv("CORS_ORIGINS", "")
     @property
     def CORS_ORIGINS(self) -> List[str]:
-        if self._cors_env == "*":
+        if self._cors_env == "*" and self.ENVIRONMENT == "development":
             return ["*"]
+        if not self._cors_env:
+            return ["http://localhost:5173"] if self.DEBUG else []
         return [origin.strip() for origin in self._cors_env.split(",") if origin.strip()]
 
     # Database Configuration (PostgreSQL with SQLite local dev/test fallback)
@@ -34,14 +36,18 @@ class Settings:
 
     # Clerk Authentication
     CLERK_SECRET_KEY: str = os.getenv("CLERK_SECRET_KEY", "")
-    CLERK_PUBLISHABLE_KEY: str = os.getenv("CLERK_PUBLISHABLE_KEY", "") or os.getenv("VITE_CLERK_PUBLISHABLE_KEY", "")
+    CLERK_ISSUER: str = os.getenv("CLERK_ISSUER", "")
+    CLERK_JWKS_URL: str = os.getenv("CLERK_JWKS_URL", "")
 
     # LLM API Keys (Gemini Primary, Grok Secondary)
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
     GROK_API_KEY: str = os.getenv("GROK_API_KEY") or ""
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GROK_MODEL: str = os.getenv("GROK_MODEL", "grok-3-mini")
 
     # Upload Limits & Validation
     MAX_FILE_SIZE_BYTES: int = 25 * 1024 * 1024  # 25 MB
     ALLOWED_EXTENSIONS: set = {".pdf", ".docx", ".txt"}
+    TELEMETRY_ALLOWED_EXTENSIONS: set = {".csv"}
 
 settings = Settings()

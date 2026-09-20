@@ -15,7 +15,7 @@ export function SensorsPage() {
   const [fleetData, setFleetData] = useState<any>(null);
   const [sensorData, setSensorData] = useState<SensorDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMachine, setSelectedMachine] = useState('M-003');
+  const [selectedMachine, setSelectedMachine] = useState('');
   const [availableMachines, setAvailableMachines] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -29,6 +29,7 @@ export function SensorsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!selectedMachine) { setFleetData({ total: 0, active: 0, warning: 0, recentActivity: [] }); setSensorData([]); setLoading(false); return; }
       setLoading(true);
       try {
         const [fleet, telemetry] = await Promise.all([
@@ -111,14 +112,7 @@ export function SensorsPage() {
                       {m.id} — {m.name}
                     </option>
                   ))
-                ) : (
-                  <>
-                    <option value="M-001">M-001 - CNC Mill Alpha</option>
-                    <option value="M-002">M-002 - CNC Mill Beta</option>
-                    <option value="M-003">M-003 - Hydraulic Press V1 (Critical)</option>
-                    <option value="M-004">M-004 - Conveyor Drive 4A</option>
-                  </>
-                )}
+                ) : <option value="">No machines registered</option>}
               </select>
             </div>
           </CardHeader>
@@ -127,7 +121,7 @@ export function SensorsPage() {
               <div className="flex items-center justify-center h-full text-slate-500 font-mono text-sm">
                 [LOADING_SENSOR_DATA...]
               </div>
-            ) : (
+            ) : sensorData.length === 0 ? <div className="flex items-center justify-center h-full text-slate-500 text-sm">No telemetry data available.</div> : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={sensorData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                   <defs>

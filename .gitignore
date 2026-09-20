@@ -45,6 +45,7 @@ yarn-error.log*
 .env.local
 .env.*.local
 *.env.production
+machinasense.db
 
 # IDEs & Editors
 .vscode/

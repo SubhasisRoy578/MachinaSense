@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Menu, Bell, User, AlertCircle } from 'lucide-react';
+import { Menu, Bell, AlertCircle } from 'lucide-react';
+import { UserButton } from '@clerk/clerk-react';
 import { useUIStore } from '../store/uiStore';
 import { subscribeSystemStatus } from '../services/api';
 import type { SystemStatus } from '../services/api';
 
 export function Topbar() {
   const { toggleSidebar } = useUIStore();
-  const [status, setStatus] = useState<SystemStatus>({ mode: 'mock', label: 'DEVELOPMENT MOCK' });
+  const [status, setStatus] = useState<SystemStatus>({ mode: 'error', label: 'CONNECTING' });
 
   useEffect(() => {
     const unsubscribe = subscribeSystemStatus(setStatus);
@@ -50,13 +51,6 @@ export function Topbar() {
             </span>
           )}
 
-          {status.mode === 'mock' && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-slate-800/90 text-slate-300 border border-slate-700">
-              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-              DEVELOPMENT MOCK
-            </span>
-          )}
-
           {status.mode === 'error' && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-amber-950/90 text-amber-400 border border-amber-800" title={status.message}>
               <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -69,7 +63,7 @@ export function Topbar() {
       <div className="flex items-center gap-2 sm:gap-4">
         {status.mode === 'error' && (
           <span className="hidden md:inline-block text-xs font-mono text-amber-400 bg-amber-950/40 px-3 py-1 rounded border border-amber-800/50">
-            Live ML backend unavailable. Showing development data.
+            Live backend unavailable. No data is shown until the connection is restored.
           </span>
         )}
 
@@ -77,9 +71,7 @@ export function Topbar() {
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-slate-950"></span>
         </button>
-        <div className="h-8 w-8 rounded bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden cursor-pointer hover:border-slate-500 transition-colors">
-          <User className="w-4 h-4 text-slate-400" />
-        </div>
+        <UserButton afterSignOutUrl="/sign-in" />
       </div>
     </header>
   );

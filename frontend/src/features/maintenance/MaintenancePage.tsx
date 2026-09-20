@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { api } from '../../services/api';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -9,21 +10,35 @@ export function MaintenancePage() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ machine_id: '', title: '', description: '', recommended_action: '', priority: 'medium' });
 
   useEffect(() => {
     const fetchMaintenance = async () => {
       setLoading(true);
       try {
+        setError('');
         const data = await api.maintenance.listQueue();
         setTasks(data);
       } catch (error) {
         console.error("Failed to fetch maintenance queue", error);
+        setError(error instanceof Error ? error.message : 'Maintenance records are unavailable.');
       } finally {
         setLoading(false);
       }
     };
     fetchMaintenance();
   }, []);
+  async function createTask(event: FormEvent) {
+    event.preventDefault();
+    try { const task = await api.maintenance.create(form); setTasks(current => [task, ...current]); setShowCreate(false); setForm({ machine_id: '', title: '', description: '', recommended_action: '', priority: 'medium' }); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to create maintenance record.'); }
+  }
+  async function removeTask(id: string) {
+    try { await api.maintenance.remove(id); setTasks(current => current.filter(task => task.id !== id)); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to delete maintenance record.'); }
+  }
 
   const criticalCount = tasks.filter(t => t.priority === 'critical').length;
   const pendingCount = tasks.filter(t => t.status === 'pending').length;
@@ -36,6 +51,9 @@ export function MaintenancePage() {
         </h1>
         <p className="text-sm text-slate-400 mt-1">Actionable maintenance queue driven by AI predictive health scores and real-time anomalies.</p>
       </div>
+      <button onClick={() => setShowCreate(value => !value)} className="self-start rounded bg-accent px-4 py-2 text-sm font-semibold text-slate-950">Create maintenance action</button>
+      {showCreate && <form onSubmit={createTask} className="grid grid-cols-1 gap-3 rounded border border-slate-800 bg-slate-900/50 p-4 md:grid-cols-2">{[['machine_id','Machine ID'],['title','Action title'],['description','Condition / context'],['recommended_action','Recommended action']].map(([key,label]) => <input key={key} required value={(form as any)[key]} onChange={event => setForm({...form,[key]:event.target.value})} placeholder={label} className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"/>)}<select value={form.priority} onChange={event=>setForm({...form,priority:event.target.value})} className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select><button className="rounded bg-accent px-3 py-2 text-sm font-semibold text-slate-950">Save action</button></form>}
+      {error && <div className="rounded border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">{error}</div>}
 
       {/* KPI Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -87,7 +105,7 @@ export function MaintenancePage() {
                       [LOADING_MAINTENANCE_QUEUE...]
                     </td>
                   </tr>
-                ) : (
+                ) : tasks.length === 0 ? <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500">No maintenance actions available.</td></tr> : (
                   tasks.map((task) => (
                     <tr key={task.id} className="hover:bg-slate-800/20 transition-colors group">
                       <td className="px-6 py-4">
@@ -130,6 +148,7 @@ export function MaintenancePage() {
                           >
                             View Diagnostic
                           </button>
+                          <button onClick={() => removeTask(task.id)} className="text-xs text-red-400 hover:text-red-300">Delete</button>
                           <button 
                             onClick={() => navigate(`/machines/${task.machineId}`)}
                             className="inline-flex items-center justify-center px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider text-accent border border-accent/30 hover:bg-accent/10 transition-colors"

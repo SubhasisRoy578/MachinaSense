@@ -1,5 +1,8 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { SignedIn, SignedOut, RedirectToSignIn, SignIn, SignUp, useAuth } from '@clerk/clerk-react';
+import { useEffect } from 'react';
+import { configureApiAuth } from './services/api';
 import { DashboardLayout } from './layouts/DashboardLayout';
 
 // Route-based code splitting for optimal production performance
@@ -15,6 +18,14 @@ const DiagnosticCaseView = lazy(() => import('./features/diagnostics/DiagnosticC
 const KnowledgeBasePage = lazy(() => import('./features/knowledge/KnowledgeBasePage').then(m => ({ default: m.KnowledgeBasePage })));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const CopilotPage = lazy(() => import('./features/copilot/CopilotPage').then(m => ({ default: m.CopilotPage })));
+
+function SessionBridge({ children }: { children: React.ReactNode }) {
+  const { getToken } = useAuth();
+  useEffect(() => { configureApiAuth(() => getToken()); }, [getToken]);
+  return <>{children}</>;
+}
+function ProtectedApp() { return <><SignedIn><SessionBridge><DashboardLayout /></SessionBridge></SignedIn><SignedOut><RedirectToSignIn /></SignedOut></>; }
 
 function RouteLoadingFallback() {
   return (
@@ -32,7 +43,9 @@ export default function App() {
     <BrowserRouter>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
-          <Route path="/" element={<DashboardLayout />}>
+          <Route path="/sign-in/*" element={<SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />} />
+          <Route path="/sign-up/*" element={<SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />} />
+          <Route path="/" element={<ProtectedApp />}>
             <Route index element={<OverviewPage />} />
             <Route path="machines" element={<MachinesPage />} />
             <Route path="machines/:id" element={<MachineDetailPage />} />
@@ -45,7 +58,9 @@ export default function App() {
             <Route path="knowledge-base" element={<KnowledgeBasePage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="copilot" element={<CopilotPage />} />
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

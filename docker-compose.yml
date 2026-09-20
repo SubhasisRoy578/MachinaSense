@@ -11,10 +11,12 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
       - LOG_LEVEL=INFO
-      - CORS_ORIGINS=*
-      # Add LLM API keys below if available:
+      - CORS_ORIGINS=${CORS_ORIGINS:?Set an explicit deployed frontend origin}
+      - DATABASE_URL=${DATABASE_URL:?Set PostgreSQL DATABASE_URL}
+      - CLERK_JWKS_URL=${CLERK_JWKS_URL:?Set Clerk JWKS URL}
+      # Add backend-only provider keys below if available:
       # - GEMINI_API_KEY=${GEMINI_API_KEY}
-      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - GROK_API_KEY=${GROK_API_KEY}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

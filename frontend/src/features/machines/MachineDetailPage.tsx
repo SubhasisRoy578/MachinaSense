@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import type { Machine, SensorDataPoint, RulForecastPoint, AnomalyEvent, DiagnosticPreview } from '../../types/models';
@@ -21,6 +22,8 @@ export function MachineDetailPage() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -64,6 +67,21 @@ export function MachineDetailPage() {
     } finally {
       setIsGenerating(false);
     }
+  };
+  const handleTelemetryUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !id) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) { setUploadMessage('Select a CSV telemetry file.'); return; }
+    if (file.size === 0 || file.size > 25 * 1024 * 1024) { setUploadMessage('CSV files must be between 1 byte and 25 MB.'); return; }
+    setUploading(true); setUploadMessage('Validating telemetry and running ML inference…');
+    try {
+      const result = await api.machines.uploadTelemetry(id, file);
+      setUploadMessage(`${result.accepted_rows} rows imported. Refreshing machine intelligence…`);
+      window.setTimeout(() => window.location.reload(), 500);
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : 'Telemetry upload failed.');
+    } finally { setUploading(false); }
   };
 
   if (loading) {
@@ -114,6 +132,12 @@ export function MachineDetailPage() {
               </>
             )}
           </button>
+          <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-accent/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-accent hover:bg-accent/10">
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
+            {uploading ? 'Processing telemetry' : 'Upload telemetry CSV'}
+            <input type="file" accept=".csv,text/csv" className="hidden" disabled={uploading} onChange={handleTelemetryUpload} />
+          </label>
+          {uploadMessage && <div className={`max-w-xs text-right text-xs ${uploadMessage.includes('failed') || uploadMessage.includes('Select') || uploadMessage.includes('must') ? 'text-red-400' : 'text-slate-400'}`}>{uploadMessage}</div>}
         </div>
       </div>
 
@@ -172,7 +196,7 @@ export function MachineDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
+              {sensorData.length === 0 ? <div className="grid h-full place-items-center text-sm text-slate-500">No telemetry data available. Upload a validated CSV to begin inference.</div> : <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={sensorData}>
                   <defs>
                     <linearGradient id="vibColor" x1="0" y1="0" x2="0" y2="1">
@@ -194,7 +218,7 @@ export function MachineDetailPage() {
                   <Area type="monotone" dataKey="vibration" stroke="#a855f7" fillOpacity={1} fill="url(#vibColor)" strokeWidth={2} />
                   <Area type="monotone" dataKey="temperature" stroke="#f59e0b" fillOpacity={1} fill="url(#tempColor)" strokeWidth={2} />
                 </AreaChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer>}
             </CardContent>
           </Card>
 
@@ -205,7 +229,7 @@ export function MachineDetailPage() {
               <div className="text-xs text-slate-500 font-mono">LSTM PyTorch Temporal Degradation Model</div>
             </CardHeader>
             <CardContent className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
+              {rulData.length === 0 ? <div className="grid h-full place-items-center text-sm text-slate-500">No predictions available until telemetry is uploaded.</div> : <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={rulData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                   <XAxis dataKey="timestamp" stroke="#64748b" tickFormatter={(t) => format(new Date(t), 'MM-dd')} />
@@ -218,7 +242,7 @@ export function MachineDetailPage() {
                   <Line type="monotone" dataKey="lowerBound" stroke="#1d4ed8" strokeDasharray="2 2" dot={false} />
                   <Line type="monotone" dataKey="upperBound" stroke="#1d4ed8" strokeDasharray="2 2" dot={false} />
                 </LineChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer>}
             </CardContent>
           </Card>
 

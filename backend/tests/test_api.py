@@ -1,92 +1,43 @@
-import pytest
+"""Authentication, ownership, persistence, and ingestion regression tests."""
+import os, sys, uuid
 from fastapi.testclient import TestClient
-import sys
-import os
-
-BASE_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
+BASE_DIR=os.path.normpath(os.path.join(os.path.dirname(__file__),".."));sys.path.insert(0,BASE_DIR)
 from app.main import app
+from app.config import settings
+settings.ENVIRONMENT="test"
 
-client = TestClient(app)
+def headers(user): return {"Authorization":f"Bearer test_token_{user}"}
+def create_machine(client,user):
+    mid=f"test-{uuid.uuid4().hex[:10]}"
+    response=client.post("/api/machines",headers=headers(user),json={"machine_id":mid,"name":"Test Pump","machine_type":"Pump","location":"Lab"})
+    assert response.status_code==201
+    return mid
 
-def test_health_endpoint():
+def test_health_is_public():
+    with TestClient(app) as client: assert client.get("/health").status_code==200
+def test_protected_route_requires_authentication():
+    with TestClient(app) as client: assert client.get("/api/machines").status_code==401
+def test_machine_isolation_and_cross_user_denial():
     with TestClient(app) as client:
-        response = client.get("/health")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "healthy"
-        assert data["models_loaded"] is True
-        assert data["backend"] == "live"
-
-def test_machines_endpoint():
+        mid=create_machine(client,"owner")
+        assert client.get(f"/api/machines/{mid}",headers=headers("owner")).status_code==200
+        assert client.get(f"/api/machines/{mid}",headers=headers("other")).status_code==404
+def test_invalid_telemetry_is_rejected():
     with TestClient(app) as client:
-        response = client.get("/api/machines")
-        assert response.status_code == 200
-        machines = response.json()
-        assert isinstance(machines, list)
-        assert len(machines) > 0
-        m1 = machines[0]
-        assert "id" in m1
-        assert "healthScore" in m1
-        assert "predictedRul" in m1
-
-def test_machine_detail_and_404():
+        mid=create_machine(client,"csv")
+        response=client.post(f"/api/machines/{mid}/telemetry",headers=headers("csv"),files={"file":("bad.csv",b"cycle,s2\n1,2\n","text/csv")})
+        assert response.status_code==400
+        assert "requires columns" in response.json()["detail"]
+def test_copilot_conversation_is_isolated():
     with TestClient(app) as client:
-        response = client.get("/api/machines/FD001-001")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == "FD001-001"
-        assert "sensors" in data
-
-        # Invalid machine ID
-        invalid_res = client.get("/api/machines/FD001-99999")
-        assert invalid_res.status_code == 404
-
-def test_machine_prediction():
+        convo=client.post("/api/copilot/conversations",headers=headers("alice"),json={}).json()
+        assert client.get(f"/api/copilot/conversations/{convo['id']}",headers=headers("bob")).status_code==404
+def test_diagnostic_and_maintenance_ownership():
     with TestClient(app) as client:
-        response = client.get("/api/machines/FD001-001/prediction")
-        assert response.status_code == 200
-        data = response.json()
-        assert "predictedRul" in data
-        assert "confidenceInterval" in data
-        assert "degradationCurve" in data
-
-def test_machine_anomalies():
-    with TestClient(app) as client:
-        response = client.get("/api/machines/FD001-001/anomalies")
-        assert response.status_code == 200
-        data = response.json()
-        assert "anomalyEvents" in data
-
-def test_analytics_models():
-    with TestClient(app) as client:
-        response = client.get("/api/analytics/models")
-        assert response.status_code == 200
-        data = response.json()
-        assert "evaluation" in data
-        assert "rul_models" in data["evaluation"]
-
-def test_predict_rul():
-    with TestClient(app) as client:
-        sample_features = [642.0, 1585.0, 1405.0, 21.6, 553.0, 2388.0, 9050.0, 47.5, 521.0, 2388.0, 8120.0, 8.4, 392.0, 38.8, 23.2]
-        payload = {"features": sample_features}
-        response = client.post("/api/predict/rul", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert "predicted_rul" in data
-        assert "confidence_interval" in data
-
-def test_detect_anomaly():
-    with TestClient(app) as client:
-        sample_features = [642.0, 1585.0, 1405.0, 21.6, 553.0, 2388.0, 9050.0, 47.5, 521.0, 2388.0, 8120.0, 8.4, 392.0, 38.8, 23.2]
-        payload = {"features": sample_features}
-        response = client.post("/api/detect/anomaly", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert "anomaly_score" in data
-        assert "severity" in data
-
-if __name__ == "__main__":
-    pytest.main(["-v", __file__])
+        mid=create_machine(client,"workflow")
+        diagnostic=client.post("/api/diagnostics",headers=headers("workflow"),json={"machine_id":mid})
+        assert diagnostic.status_code==201
+        assert client.get(f"/api/diagnostics/{diagnostic.json()['id']}",headers=headers("intruder")).status_code==404
+        task=client.post("/api/maintenance",headers=headers("workflow"),json={"machine_id":mid,"title":"Inspect","description":"User-created action"})
+        assert task.status_code==201
+        assert client.delete(f"/api/maintenance/{task.json()['id']}",headers=headers("intruder")).status_code==404

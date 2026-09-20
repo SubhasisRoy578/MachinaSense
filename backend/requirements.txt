@@ -16,3 +16,4 @@ sqlalchemy
 psycopg2-binary
 pyjwt[crypto]
 cryptography
+alembic

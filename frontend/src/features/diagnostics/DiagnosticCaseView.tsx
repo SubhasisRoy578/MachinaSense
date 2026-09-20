@@ -12,6 +12,8 @@ export function DiagnosticCaseView() {
   const navigate = useNavigate();
   const [caseData, setCaseData] = useState<DiagnosticCase | null>(null);
   const [loading, setLoading] = useState(true);
+  const [explanation, setExplanation] = useState('');
+  const [explainError, setExplainError] = useState('');
 
   useEffect(() => {
     const fetchCase = async () => {
@@ -29,6 +31,11 @@ export function DiagnosticCaseView() {
     };
     fetchCase();
   }, [id]);
+  const refreshExplanation = async () => {
+    if (!id) return;
+    try { setExplainError(''); const result = await api.diagnostics.explain(id); setExplanation(result.content); }
+    catch (error) { setExplainError(error instanceof Error ? error.message : 'Explanation is unavailable.'); }
+  };
 
   if (loading) {
     return (
@@ -87,7 +94,7 @@ export function DiagnosticCaseView() {
               </Badge>
             ) : (
               <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700 flex items-center gap-1.5 font-mono text-xs">
-                Development Mock
+                Provider metadata unavailable
               </Badge>
             )}
           </div>
@@ -192,6 +199,7 @@ export function DiagnosticCaseView() {
               {caseData.generatorUsed && (
                 <span className="text-xs font-mono text-slate-500">{caseData.generatorUsed}</span>
               )}
+              <button onClick={refreshExplanation} className="rounded border border-accent/30 px-2 py-1 text-xs text-accent hover:bg-accent/10">Refresh explanation</button>
             </CardHeader>
             <CardContent className="pt-6 space-y-8">
               
@@ -201,8 +209,9 @@ export function DiagnosticCaseView() {
                   Engineering Assessment
                 </h3>
                 <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
-                  {caseData.explanation}
+                  {explanation || caseData.explanation}
                 </p>
+                {explainError && <p className="mt-2 text-xs text-red-400">{explainError}</p>}
               </div>
 
               {/* Recommended Action */}
@@ -230,7 +239,7 @@ export function DiagnosticCaseView() {
                  <div>
                    <h4 className="text-sm font-bold text-slate-200">No supporting documentation found.</h4>
                    <p className="text-xs text-slate-400 mt-1">
-                     The diagnostic explanation is derived solely from telemetry baselines. No specific technical manuals or maintenance logs were retrieved from the Knowledge Base for this anomaly signature.
+                     No technical documentation was retrieved for this investigation.
                    </p>
                  </div>
               </div>

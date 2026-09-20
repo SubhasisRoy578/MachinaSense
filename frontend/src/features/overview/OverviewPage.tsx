@@ -18,10 +18,8 @@ export function OverviewPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [machinesData, sensorSeries] = await Promise.all([
-          api.machines.list(),
-          api.sensors.getMachineData('M-003', 24) // Show critical machine data as example
-        ]);
+        const machinesData = await api.machines.list();
+        const sensorSeries = machinesData.length ? await api.sensors.getMachineData(machinesData[0].id, 24) : [];
         setMachines(machinesData);
         setSensorData(sensorSeries);
       } catch (error) {
@@ -83,7 +81,7 @@ export function OverviewPage() {
             <div className="h-full w-full flex items-center justify-center text-slate-500 font-mono text-sm">
               [LOADING_SENSOR_DATA...]
             </div>
-          ) : (
+          ) : sensorData.length === 0 ? <div className="h-full w-full flex items-center justify-center text-slate-500 text-sm">No telemetry data available.</div> : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={sensorData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>

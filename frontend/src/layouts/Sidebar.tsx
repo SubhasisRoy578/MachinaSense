@@ -22,6 +22,7 @@ const navigation = [
   { name: 'Predictions', to: '/predictions', icon: BarChart2 },
   { name: 'Maintenance', to: '/maintenance', icon: Wrench },
   { name: 'AI Diagnostics', to: '/diagnostics', icon: BrainCircuit },
+  { name: 'Engineering Copilot', to: '/copilot', icon: BrainCircuit },
   { name: 'Knowledge Base', to: '/knowledge-base', icon: BookOpen },
   { name: 'Analytics', to: '/analytics', icon: BarChart2 },
 ];
