@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { api } from '../../services/api';
 import type { KnowledgeDocument, RetrievalResult } from '../../types/models';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -26,7 +26,7 @@ export function KnowledgeBasePage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchDocs = async () => {
+  const fetchDocs = useCallback(async () => {
     setLoading(true);
     try {
       const docs = await api.knowledge.listDocuments();
@@ -36,11 +36,14 @@ export function KnowledgeBasePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchDocs();
-  }, []);
+    const requestId = window.setTimeout(() => {
+      void fetchDocs();
+    }, 0);
+    return () => window.clearTimeout(requestId);
+  }, [fetchDocs]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();

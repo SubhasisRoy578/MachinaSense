@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import type { DiagnosticCase } from '../../types/models';
@@ -18,7 +18,7 @@ export function DiagnosticsPage() {
   const [createMachineId, setCreateMachineId] = useState('');
   const [error, setError] = useState('');
 
-  const fetchCases = async () => {
+  const fetchCases = useCallback(async () => {
     setLoading(true);
     try {
       setError('');
@@ -34,11 +34,14 @@ export function DiagnosticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineFilter]);
 
   useEffect(() => {
-    fetchCases();
-  }, [machineFilter]);
+    const requestId = window.setTimeout(() => {
+      void fetchCases();
+    }, 0);
+    return () => window.clearTimeout(requestId);
+  }, [fetchCases]);
 
   const handleCreateDiagnostic = async () => {
     if (!createMachineId.trim()) return;
