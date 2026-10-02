@@ -3,7 +3,7 @@ from typing import List
 
 class Settings:
     PROJECT_NAME: str = "MachinaSense Industrial Intelligence & Grounded RAG API"
-    VERSION: str = "2.1.0"
+    VERSION: str = "3.0.0"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development").lower()
     DEBUG: bool = ENVIRONMENT == "development"
     
@@ -16,23 +16,33 @@ class Settings:
     _cors_env: str = os.getenv("CORS_ORIGINS", "")
     @property
     def CORS_ORIGINS(self) -> List[str]:
-        if self._cors_env == "*" and self.ENVIRONMENT == "development":
+        raw = self._cors_env or os.getenv("CORS_ORIGIN", "")
+        if not raw:
+            return ["http://localhost:5173", "http://localhost:3000"] if self.DEBUG else ["https://machinasense.netlify.app"]
+        origins = [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+        if self.ENVIRONMENT == "production":
+            # Strict production CORS: reject wildcard '*'
+            origins = [o for o in origins if o != "*"]
+            if not origins:
+                origins = ["https://machinasense.netlify.app"]
+        elif "*" in origins and self.ENVIRONMENT == "development":
             return ["*"]
-        if not self._cors_env:
-            return ["http://localhost:5173"] if self.DEBUG else []
-        return [origin.strip() for origin in self._cors_env.split(",") if origin.strip()]
+        return origins
 
     # Database Configuration (PostgreSQL with SQLite local dev/test fallback)
     _db_url: str = os.getenv("DATABASE_URL", "")
     @property
     def DATABASE_URL(self) -> str:
-        if not self._db_url:
+        url = self._db_url or os.getenv("DATABASE_URL", "")
+        if not url:
+            if self.ENVIRONMENT == "production":
+                raise RuntimeError("DATABASE_URL must be configured in production. Ephemeral SQLite fallback is not permitted in production mode.")
             # Fallback to local SQLite if DATABASE_URL is not set
             return "sqlite:///./machinasense.db"
         # Fix Heroku/Supabase postgres:// scheme
-        if self._db_url.startswith("postgres://"):
-            return self._db_url.replace("postgres://", "postgresql://", 1)
-        return self._db_url
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql://", 1)
+        return url
 
     # Clerk Authentication
     CLERK_SECRET_KEY: str = os.getenv("CLERK_SECRET_KEY", "")

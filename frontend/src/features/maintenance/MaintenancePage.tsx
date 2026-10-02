@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from '../../services/api';
+import type { Machine } from '../../types/models';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Wrench, Calendar, ArrowRight, Activity, AlertTriangle } from 'lucide-react';
@@ -9,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 export function MaintenancePage() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<any[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -19,8 +21,15 @@ export function MaintenancePage() {
       setLoading(true);
       try {
         setError('');
-        const data = await api.maintenance.listQueue();
-        setTasks(data);
+        const [maintenanceData, machineData] = await Promise.all([
+          api.maintenance.listQueue(),
+          api.machines.list()
+        ]);
+        setTasks(maintenanceData);
+        setMachines(machineData);
+        if (machineData.length > 0) {
+          setForm(prev => ({ ...prev, machine_id: prev.machine_id || machineData[0].id }));
+        }
       } catch (error) {
         console.error("Failed to fetch maintenance queue", error);
         setError(error instanceof Error ? error.message : 'Maintenance records are unavailable.');
@@ -32,7 +41,12 @@ export function MaintenancePage() {
   }, []);
   async function createTask(event: FormEvent) {
     event.preventDefault();
-    try { const task = await api.maintenance.create(form); setTasks(current => [task, ...current]); setShowCreate(false); setForm({ machine_id: '', title: '', description: '', recommended_action: '', priority: 'medium' }); }
+    try {
+      const task = await api.maintenance.create(form);
+      setTasks(current => [task, ...current]);
+      setShowCreate(false);
+      setForm({ machine_id: machines[0]?.id || '', title: '', description: '', recommended_action: '', priority: 'medium' });
+    }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to create maintenance record.'); }
   }
   async function removeTask(id: string) {
@@ -51,8 +65,60 @@ export function MaintenancePage() {
         </h1>
         <p className="text-sm text-slate-400 mt-1">Actionable maintenance queue driven by AI predictive health scores and real-time anomalies.</p>
       </div>
-      <button onClick={() => setShowCreate(value => !value)} className="self-start rounded bg-accent px-4 py-2 text-sm font-semibold text-slate-950">Create maintenance action</button>
-      {showCreate && <form onSubmit={createTask} className="grid grid-cols-1 gap-3 rounded border border-slate-800 bg-slate-900/50 p-4 md:grid-cols-2">{[['machine_id','Machine ID'],['title','Action title'],['description','Condition / context'],['recommended_action','Recommended action']].map(([key,label]) => <input key={key} required value={(form as any)[key]} onChange={event => setForm({...form,[key]:event.target.value})} placeholder={label} className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"/>)}<select value={form.priority} onChange={event=>setForm({...form,priority:event.target.value})} className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select><button className="rounded bg-accent px-3 py-2 text-sm font-semibold text-slate-950">Save action</button></form>}
+      <button onClick={() => setShowCreate(value => !value)} className="self-start rounded bg-accent px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-accent/90 transition-colors">
+        {showCreate ? 'Close Form' : 'Create maintenance action'}
+      </button>
+      {showCreate && (
+        <form onSubmit={createTask} className="grid grid-cols-1 gap-3 rounded border border-slate-800 bg-slate-900/50 p-4 md:grid-cols-2">
+          <select
+            required
+            value={form.machine_id}
+            onChange={event => setForm({ ...form, machine_id: event.target.value })}
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+          >
+            <option value="" disabled>Select an authenticated machine...</option>
+            {machines.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.name || m.id} ({m.id})
+              </option>
+            ))}
+          </select>
+          <input
+            required
+            value={form.title}
+            onChange={event => setForm({ ...form, title: event.target.value })}
+            placeholder="Action title"
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+          />
+          <input
+            required
+            value={form.description}
+            onChange={event => setForm({ ...form, description: event.target.value })}
+            placeholder="Condition / context"
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+          />
+          <input
+            required
+            value={form.recommended_action}
+            onChange={event => setForm({ ...form, recommended_action: event.target.value })}
+            placeholder="Recommended action"
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+          />
+          <select
+            value={form.priority}
+            onChange={event => setForm({ ...form, priority: event.target.value })}
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+          <button className="rounded bg-accent px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-accent/90 transition-colors">
+            Save action
+          </button>
+        </form>
+      )}
       {error && <div className="rounded border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">{error}</div>}
 
       {/* KPI Overview */}

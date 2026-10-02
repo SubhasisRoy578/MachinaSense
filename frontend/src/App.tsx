@@ -56,6 +56,7 @@ export default function App() {
             <Route path="diagnostics" element={<DiagnosticsPage />} />
             <Route path="diagnostics/:id" element={<DiagnosticCaseView />} />
             <Route path="knowledge-base" element={<KnowledgeBasePage />} />
+            <Route path="documents" element={<KnowledgeBasePage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="copilot" element={<CopilotPage />} />

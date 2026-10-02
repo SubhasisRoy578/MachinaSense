@@ -10,7 +10,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     machines = relationship("Machine", back_populates="user", cascade="all, delete-orphan")
     conversations = relationship("CopilotConversation", back_populates="user", cascade="all, delete-orphan")
@@ -24,8 +24,8 @@ class Machine(Base):
     machine_type = Column(String, default="Turbofan Engine")
     location = Column(String, default="Industrial Plant")
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     user = relationship("User", back_populates="machines")
     sensor_readings = relationship("SensorReading", back_populates="machine", cascade="all, delete-orphan")
@@ -42,7 +42,7 @@ class SensorReading(Base):
     machine_id = Column(String, ForeignKey("machines.id"), index=True, nullable=False)
     user_id = Column(String, ForeignKey("users.id"), index=True, nullable=False)
     cycle = Column(Integer, nullable=False, default=1)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     # 15 NASA C-MAPSS core feature sensor readings
     s2 = Column(Float, default=640.0)
@@ -79,7 +79,7 @@ class Prediction(Base):
     confidence_max = Column(Float, default=0.0)
     health_score = Column(Integer, default=100)
     risk_level = Column(String, default="healthy")  # healthy, warning, critical
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     machine = relationship("Machine", back_populates="predictions")
 
@@ -93,7 +93,7 @@ class AnomalyEvent(Base):
     score = Column(Float, default=0.5)
     description = Column(Text, nullable=False)
     affected_sensors = Column(Text, default="[]")  # JSON encoded list of sensor names
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     machine = relationship("Machine", back_populates="anomalies")
 
@@ -108,7 +108,7 @@ class MaintenanceTask(Base):
     status = Column(String, default="open")      # open, in_progress, resolved
     description = Column(Text, nullable=False)
     recommended_action = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     machine = relationship("Machine", back_populates="maintenance_tasks")
 
@@ -129,7 +129,7 @@ class DiagnosticCase(Base):
     fallback_level = Column(Integer, default=3)
     is_grounded_fallback = Column(Boolean, default=True)
     evidence = Column(Text, default="[]")  # JSON encoded list of evidence items
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     machine = relationship("Machine", back_populates="diagnostics")
 
@@ -140,8 +140,8 @@ class CopilotConversation(Base):
     user_id = Column(String, ForeignKey("users.id"), index=True, nullable=False)
     machine_id = Column(String, ForeignKey("machines.id"), nullable=True)
     title = Column(String, default="Industrial Copilot Session")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     user = relationship("User", back_populates="conversations")
     machine = relationship("Machine", back_populates="conversations")
@@ -158,7 +158,7 @@ class CopilotMessage(Base):
     provider_used = Column(String, default="grounded_fallback")  # gemini, grok, grounded_fallback, ml_only, unavailable
     fallback_level = Column(Integer, default=1)
     evidence = Column(Text, default="[]")  # JSON list of retrieved chunks
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     conversation = relationship("CopilotConversation", back_populates="messages")
 
@@ -171,7 +171,7 @@ class KnowledgeDoc(Base):
     title = Column(String, nullable=False)
     type = Column(String, default="PDF")
     size = Column(Integer, default=0)
-    upload_date = Column(DateTime, default=datetime.datetime.utcnow)
+    upload_date = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     source_category = Column(String, default="Manual")
     indexed_chunks = Column(Integer, default=0)
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")

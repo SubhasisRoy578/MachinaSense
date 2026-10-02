@@ -13,6 +13,7 @@ export function DiagnosticsPage() {
   const machineFilter = searchParams.get('machine');
   
   const [cases, setCases] = useState<DiagnosticCase[]>([]);
+  const [machines, setMachines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [createMachineId, setCreateMachineId] = useState('');
@@ -22,11 +23,18 @@ export function DiagnosticsPage() {
     setLoading(true);
     try {
       setError('');
-      const data = await api.diagnostics.listCases();
+      const [casesData, machinesData] = await Promise.all([
+        api.diagnostics.listCases(),
+        api.machines.list()
+      ]);
+      setMachines(machinesData);
+      if (machinesData.length > 0) {
+        setCreateMachineId(prev => prev || machinesData[0].id);
+      }
       if (machineFilter) {
-        setCases(data.filter(c => c.machineId === machineFilter));
+        setCases(casesData.filter(c => c.machineId === machineFilter));
       } else {
-        setCases(data);
+        setCases(casesData);
       }
     } catch (error) {
       console.error("Failed to fetch diagnostics", error);
@@ -49,7 +57,6 @@ export function DiagnosticsPage() {
     try {
       await api.diagnostics.createCase(createMachineId.trim());
       await fetchCases();
-      setCreateMachineId('');
     } catch (error) {
       console.error("Failed to create diagnostic case", error);
       setError(error instanceof Error ? error.message : 'Unable to create a diagnostic.');
@@ -76,13 +83,18 @@ export function DiagnosticsPage() {
         </div>
         {/* Quick create diagnostic */}
         <div className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Your machine ID"
+          <select
             value={createMachineId}
             onChange={(e) => setCreateMachineId(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent w-48"
-          />
+            className="bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent w-56"
+          >
+            <option value="" disabled>Select your machine...</option>
+            {machines.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name || m.id} ({m.id})
+              </option>
+            ))}
+          </select>
           <button
             onClick={handleCreateDiagnostic}
             disabled={creating || !createMachineId.trim()}

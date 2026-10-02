@@ -3,7 +3,7 @@ import { api } from '../../services/api';
 import type { KnowledgeDocument, RetrievalResult } from '../../types/models';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { BookOpen, Search, UploadCloud, FileText, File, FileType, CheckCircle2, Clock, AlertCircle, X } from 'lucide-react';
+import { BookOpen, Search, UploadCloud, FileText, File, FileType, CheckCircle2, Clock, AlertCircle, X, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt'];
@@ -94,6 +94,16 @@ export function KnowledgeBasePage() {
       setUploadError(error.message || 'Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (id: string) => {
+    try {
+      await api.knowledge.deleteDocument(id);
+      setDocuments(prev => prev.filter(d => d.id !== id));
+      setUploadSuccess('Document deleted successfully.');
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to delete document.');
     }
   };
 
@@ -314,19 +324,20 @@ export function KnowledgeBasePage() {
                   <th className="px-6 py-4 font-medium tracking-wider">Category</th>
                   <th className="px-6 py-4 font-medium tracking-wider">Size</th>
                   <th className="px-6 py-4 font-medium tracking-wider">Status</th>
-                  <th className="px-6 py-4 font-medium tracking-wider text-right">Added</th>
+                  <th className="px-6 py-4 font-medium tracking-wider">Added</th>
+                  <th className="px-6 py-4 font-medium tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-mono">
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-mono">
                       [LOADING_DOCUMENT_INDEX...]
                     </td>
                   </tr>
                 ) : documents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500 italic">
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">
                       No documents in the knowledge base.
                     </td>
                   </tr>
@@ -361,8 +372,17 @@ export function KnowledgeBasePage() {
                           </div>
                         )}
                       </td>
+                      <td className="px-6 py-4 text-slate-400">
+                        {formatDistanceToNow(new Date(doc.uploadDate), { addSuffix: true })}
+                      </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="text-slate-400">{formatDistanceToNow(new Date(doc.uploadDate), { addSuffix: true })}</div>
+                        <button
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          className="inline-flex items-center justify-center p-1.5 rounded hover:bg-red-950/40 text-slate-500 hover:text-red-400 transition-colors"
+                          title="Delete document"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))
