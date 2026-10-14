@@ -19,6 +19,7 @@ const KnowledgeBasePage = lazy(() => import('./features/knowledge/KnowledgeBaseP
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const CopilotPage = lazy(() => import('./features/copilot/CopilotPage').then(m => ({ default: m.CopilotPage })));
+const ModelTrainingPage = lazy(() => import('./features/training/ModelTrainingPage').then(m => ({ default: m.ModelTrainingPage })));
 
 function SessionBridge({ children }: { children: React.ReactNode }) {
   const { getToken } = useAuth();
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="copilot" element={<CopilotPage />} />
+            <Route path="model-training" element={<ModelTrainingPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

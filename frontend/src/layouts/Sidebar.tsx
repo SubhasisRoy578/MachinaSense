@@ -9,7 +9,8 @@ import {
   BrainCircuit, 
   BookOpen, 
   BarChart2, 
-  Settings 
+  Settings,
+  Layers
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useUIStore } from '../store/uiStore';
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Maintenance', to: '/maintenance', icon: Wrench },
   { name: 'AI Diagnostics', to: '/diagnostics', icon: BrainCircuit },
   { name: 'Engineering Copilot', to: '/copilot', icon: BrainCircuit },
+  { name: 'Model Training', to: '/model-training', icon: Layers },
   { name: 'Knowledge Base', to: '/knowledge-base', icon: BookOpen },
   { name: 'Analytics', to: '/analytics', icon: BarChart2 },
 ];

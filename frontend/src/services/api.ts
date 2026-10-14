@@ -1,4 +1,10 @@
 import type { Machine } from '../types/models';
+import type { Dataset, DatasetListItem, DatasetUploadResponse } from '../types/dataset';
+import type { TrainingConfig, TrainingJob, RegisteredModel, ModelVersion, RegisterModelPayload } from '../types/training';
+import type { SingleInferenceResponse, BatchInferenceResponse, PredictionHistoryRecord } from '../types/inference';
+import type { GlobalExplanationResponse, LocalExplanationResponse } from '../types/explainability';
+import type { ModelComparisonResponse, ModelEvaluationHistoryResponse } from '../types/comparison';
+import type { DecisionSupportResponse } from '../types/decisionSupport';
 
 const BASE = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://machinasense.onrender.com' : '')).replace(/\/$/, '');
 let tokenGetter: (() => Promise<string | null>) | null = null;
@@ -98,5 +104,124 @@ export const api = {
     send: (id: string, content: string, machine_id?: string | null) => request(`/api/copilot/conversations/${encodeURIComponent(id)}/messages`, { method: 'POST', body: JSON.stringify({ content, machine_id }) }),
     delete: (id: string) => request(`/api/copilot/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     status: () => request('/api/copilot/status'),
-  }
+  },
+  datasets: {
+    list: async (): Promise<DatasetListItem[]> => {
+      const res = await request('/api/datasets');
+      return (res.datasets ?? res) as DatasetListItem[];
+    },
+    get: async (id: string): Promise<Dataset> => request(`/api/datasets/${encodeURIComponent(id)}`),
+    upload: async (file: File, name?: string): Promise<DatasetUploadResponse> => {
+      const form = new FormData();
+      form.append('file', file);
+      if (name) form.append('name', name);
+      return request('/api/datasets', { method: 'POST', body: form });
+    },
+    delete: async (id: string): Promise<null> => request(`/api/datasets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  },
+  training: {
+    start: async (config: TrainingConfig): Promise<TrainingJob> =>
+      request('/api/training/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      }),
+    getStatus: async (jobId: string): Promise<TrainingJob> =>
+      request(`/api/training/jobs/${encodeURIComponent(jobId)}`),
+    cancel: async (jobId: string): Promise<{ success: boolean; message?: string }> =>
+      request(`/api/training/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' }),
+    listJobs: async (datasetId?: string): Promise<TrainingJob[]> => {
+      const query = datasetId ? `?dataset_id=${encodeURIComponent(datasetId)}` : '';
+      const res = await request(`/api/training/jobs${query}`);
+      return (res.jobs ?? res) as TrainingJob[];
+    },
+  },
+  models: {
+    register: async (payload: RegisterModelPayload): Promise<RegisteredModel> =>
+      request('/api/models/register', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    list: async (params?: { task?: string; status?: string; name?: string }): Promise<{ models: RegisteredModel[]; total: number }> => {
+      const search = new URLSearchParams();
+      if (params?.task) search.set('task', params.task);
+      if (params?.status) search.set('status', params.status);
+      if (params?.name) search.set('name', params.name);
+      const qs = search.toString();
+      const res = await request(`/api/models${qs ? `?${qs}` : ''}`);
+      return res;
+    },
+    get: async (id: string): Promise<RegisteredModel> =>
+      request(`/api/models/${encodeURIComponent(id)}`),
+    getVersions: async (id: string): Promise<ModelVersion[]> =>
+      request(`/api/models/${encodeURIComponent(id)}/versions`),
+    activate: async (id: string): Promise<RegisteredModel> =>
+      request(`/api/models/${encodeURIComponent(id)}/activate`, { method: 'POST' }),
+    deactivate: async (id: string): Promise<RegisteredModel> =>
+      request(`/api/models/${encodeURIComponent(id)}/deactivate`, { method: 'POST' }),
+    getActive: async (task: string): Promise<RegisteredModel> =>
+      request(`/api/models/active/${encodeURIComponent(task)}`),
+  },
+  inference: {
+    predictRul: async (features: Record<string, any>): Promise<SingleInferenceResponse<{ rul_cycles: number }>> =>
+      request('/api/inference/rul', {
+        method: 'POST',
+        body: JSON.stringify({ features }),
+      }),
+    predictClassification: async (features: Record<string, any>): Promise<SingleInferenceResponse<{ condition: string; probabilities?: Record<string, number> }>> =>
+      request('/api/inference/classification', {
+        method: 'POST',
+        body: JSON.stringify({ features }),
+      }),
+    predictAnomaly: async (features: Record<string, any>): Promise<SingleInferenceResponse<{ is_anomaly: boolean; anomaly_score: number }>> =>
+      request('/api/inference/anomaly', {
+        method: 'POST',
+        body: JSON.stringify({ features }),
+      }),
+    batch: async (task: string, rows: Record<string, any>[]): Promise<BatchInferenceResponse<any>> =>
+      request(`/api/inference/${encodeURIComponent(task)}/batch`, {
+        method: 'POST',
+        body: JSON.stringify({ rows }),
+      }),
+    getHistory: async (params?: { task?: string; model_id?: string; limit?: number }): Promise<{ predictions: PredictionHistoryRecord[]; total: number }> => {
+      const search = new URLSearchParams();
+      if (params?.task) search.set('task', params.task);
+      if (params?.model_id) search.set('model_id', params.model_id);
+      if (params?.limit) search.set('limit', String(params.limit));
+      const qs = search.toString();
+      return request(`/api/inference/history${qs ? `?${qs}` : ''}`);
+    },
+    getHistoryDetail: async (id: string): Promise<PredictionHistoryRecord> =>
+      request(`/api/inference/history/${encodeURIComponent(id)}`),
+  },
+  explainability: {
+    getModelGlobal: async (id: string): Promise<GlobalExplanationResponse> =>
+      request(`/api/models/${encodeURIComponent(id)}/explain`),
+    getBenchmarkGlobal: async (id: string): Promise<GlobalExplanationResponse> =>
+      request(`/api/models/benchmark/${encodeURIComponent(id)}/explain`),
+    getPredictionLocal: async (id: string): Promise<LocalExplanationResponse> =>
+      request(`/api/inference/history/${encodeURIComponent(id)}/explain`),
+    explainLocal: async (modelId: string, features: Record<string, any>): Promise<LocalExplanationResponse> =>
+      request(`/api/models/${encodeURIComponent(modelId)}/explain/local`, {
+        method: 'POST',
+        body: JSON.stringify({ features }),
+      }),
+  },
+  comparison: {
+    compare: async (modelIds: string[], task?: string): Promise<ModelComparisonResponse> =>
+      request('/api/models/compare', {
+        method: 'POST',
+        body: JSON.stringify({ model_ids: modelIds, task }),
+      }),
+    getEvaluationHistory: async (modelName: string): Promise<ModelEvaluationHistoryResponse> =>
+      request(`/api/models/${encodeURIComponent(modelName)}/evaluation-history`),
+  },
+  decisionSupport: {
+    generate: async (payload: { machine_id?: string; prediction_id?: string; symptoms?: string }): Promise<DecisionSupportResponse> =>
+      request('/api/decision-support', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+  },
 };
+

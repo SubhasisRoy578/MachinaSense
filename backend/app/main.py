@@ -3,19 +3,28 @@ from __future__ import annotations
 import csv, io, json, logging, os, re, uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 import pandas as pd
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.auth.clerk import get_current_user
 from app.config import settings
-from app.db.models import AnomalyEvent, CopilotConversation, CopilotMessage, DiagnosticCase, DocumentChunk, KnowledgeDoc, Machine, MaintenanceTask, Prediction, SensorReading, User
+from app.db.models import AnomalyEvent, CopilotConversation, CopilotMessage, DiagnosticCase, DocumentChunk, KnowledgeDoc, Machine, MaintenanceTask, Prediction, SensorReading, User, UserDataset, TrainingJobRecord, ModelRegistryRecord, ModelPredictionRecord
 from app.db.session import get_db, init_db
 from app.ml_service import FEATURE_COLS, ml_service
 from app.rag.chunker import chunk_pages
 from app.rag.extractor import DocumentExtractionError, extract_text
+from app.services import (
+    dataset_service,
+    training_engine,
+    model_registry_service,
+    inference_service,
+    explainability_service,
+    comparison_service,
+    decision_support_service,
+)
 from app.services.llm_service import llm_service
 
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL, logging.INFO)); logger = logging.getLogger("machinasense")
@@ -23,7 +32,7 @@ def sanitize_filename(filename: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_.-]", "_", os.path.basename(filename).replace("\\", "/").split("/")[-1]) or "document.txt"
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    init_db(); ml_service.load_artifacts(); yield
+    init_db(); ml_service.load_artifacts(); os.makedirs(settings.DATASETS_DIR, exist_ok=True); os.makedirs(settings.MODELS_DIR, exist_ok=True); yield
 app = FastAPI(title=settings.PROJECT_NAME, version="3.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS, allow_credentials=True, allow_methods=["GET","POST","PATCH","DELETE"], allow_headers=["Authorization","Content-Type"])
 @app.exception_handler(Exception)
@@ -558,3 +567,469 @@ def fleet_analytics(db: Session = Depends(get_db), user: User = Depends(get_curr
         "pending_maintenance": pending_maint,
         "fleet": views
     }
+
+
+# ---------------------------------------------------------------------------
+# Dataset Service Endpoints (Backend Part 1)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/datasets", status_code=201)
+async def upload_dataset(
+    file: UploadFile = File(...),
+    name: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    original_filename = dataset_service.sanitize_filename(file.filename or "dataset.csv")
+    if not original_filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Uploaded file must be a CSV (.csv) file.")
+
+    raw_bytes = await file.read()
+    if not raw_bytes or len(raw_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Dataset file is empty (0 bytes).")
+
+    if len(raw_bytes) > settings.MAX_FILE_SIZE_BYTES:
+        max_mb = settings.MAX_FILE_SIZE_BYTES // (1024 * 1024)
+        raise HTTPException(status_code=400, detail=f"File exceeds maximum allowed upload limit of {max_mb}MB.")
+
+    # Process and compute real statistics & preview
+    processed = dataset_service.process_csv_dataset(raw_bytes, original_filename)
+
+    dataset_id = f"ds_{uuid.uuid4().hex[:12]}"
+    display_name = (name or "").strip() or os.path.splitext(original_filename)[0]
+
+    # Save CSV content to persistent user directory
+    stored_path = dataset_service.save_dataset_file(user.id, dataset_id, raw_bytes)
+
+    dataset_record = UserDataset(
+        id=dataset_id,
+        user_id=user.id,
+        name=display_name,
+        original_filename=original_filename,
+        file_path=stored_path,
+        file_size=len(raw_bytes),
+        status="ready",
+        row_count=processed["rowCount"],
+        column_count=processed["columnCount"],
+        numeric_column_count=processed["numericColumnCount"],
+        categorical_column_count=processed["categoricalColumnCount"],
+        missing_value_count=processed["missingValueCount"],
+        duplicate_row_count=processed["duplicateRowCount"],
+        memory_size_bytes=processed["memorySizeBytes"],
+        columns_json=json.dumps(processed["columns"]),
+        preview_json=json.dumps(processed["preview"]),
+    )
+
+    db.add(dataset_record)
+    db.commit()
+    db.refresh(dataset_record)
+
+    return dataset_service.serialize_dataset_view(dataset_record)
+
+
+@app.get("/api/datasets")
+def list_datasets(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    items = (
+        db.query(UserDataset)
+        .filter(UserDataset.user_id == user.id)
+        .order_by(UserDataset.created_at.desc())
+        .all()
+    )
+    return {
+        "datasets": [dataset_service.serialize_dataset_list_item(item) for item in items],
+        "total": len(items),
+    }
+
+
+@app.get("/api/datasets/{dataset_id}")
+def get_dataset(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    item = (
+        db.query(UserDataset)
+        .filter(UserDataset.id == dataset_id, UserDataset.user_id == user.id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+    return dataset_service.serialize_dataset_view(item)
+
+
+@app.delete("/api/datasets/{dataset_id}", status_code=204)
+def delete_dataset(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    item = (
+        db.query(UserDataset)
+        .filter(UserDataset.id == dataset_id, UserDataset.user_id == user.id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+
+    # Delete physical file from storage
+    dataset_service.delete_dataset_file(item.file_path)
+
+    # Delete database record
+    db.delete(item)
+    db.commit()
+    return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# ML Training Service Endpoints (Backend Part 2)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/training/jobs", status_code=201)
+async def start_training_job(
+    payload: dict,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    dataset_id = payload.get("dataset_id")
+    if not dataset_id or not isinstance(dataset_id, str):
+        raise HTTPException(status_code=400, detail="dataset_id is required.")
+
+    # 1. Verify dataset ownership
+    dataset = db.query(UserDataset).filter(UserDataset.id == dataset_id, UserDataset.user_id == user.id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found or access denied.")
+
+    if not os.path.exists(dataset.file_path):
+        raise HTTPException(status_code=400, detail="Dataset file missing from storage.")
+
+    try:
+        df = pd.read_csv(dataset.file_path)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Dataset CSV is corrupt or unreadable.") from exc
+
+    # 2. Validate configuration
+    training_engine.validate_training_config(payload, dataset, df)
+
+    job_id = f"job_{uuid.uuid4().hex[:12]}"
+    feature_cols = payload["feature_columns"]
+    target_col = payload.get("target_column")
+    task = payload["task"]
+    model_type = payload["model_type"]
+    train_split = float(payload.get("train_split", 70.0))
+    val_split = float(payload.get("validation_split", 15.0))
+    test_split = float(payload.get("test_split", 15.0))
+    seed = int(payload.get("random_seed", 42))
+
+    # 3. Create queued training job record
+    job_record = TrainingJobRecord(
+        id=job_id,
+        user_id=user.id,
+        dataset_id=dataset.id,
+        task=task,
+        target_column=target_col if task != "anomaly_detection" else None,
+        feature_columns_json=json.dumps(feature_cols),
+        model_type=model_type,
+        train_split=train_split,
+        validation_split=val_split,
+        test_split=test_split,
+        random_seed=seed,
+        status="queued",
+        current_step="Training job queued for execution",
+        progress=0.0,
+        logs_json=json.dumps([f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] Training job submitted and queued."]),
+    )
+
+    db.add(job_record)
+    db.commit()
+    db.refresh(job_record)
+
+    # 4. Enqueue background execution task
+    background_tasks.add_task(training_engine.run_training_pipeline, job_id, user.id)
+
+    return training_engine.serialize_training_job(job_record, dataset_name=dataset.name)
+
+
+@app.get("/api/training/jobs")
+def list_training_jobs(
+    dataset_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    query = db.query(TrainingJobRecord).filter(TrainingJobRecord.user_id == user.id)
+    if dataset_id:
+        query = query.filter(TrainingJobRecord.dataset_id == dataset_id)
+    jobs = query.order_by(TrainingJobRecord.created_at.desc()).all()
+    return {
+        "jobs": [training_engine.serialize_training_job(j) for j in jobs],
+        "total": len(jobs),
+    }
+
+
+@app.get("/api/training/jobs/{job_id}")
+def get_training_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    job = db.query(TrainingJobRecord).filter(TrainingJobRecord.id == job_id, TrainingJobRecord.user_id == user.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found.")
+    return training_engine.serialize_training_job(job)
+
+
+@app.post("/api/training/jobs/{job_id}/cancel")
+def cancel_training_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    job = db.query(TrainingJobRecord).filter(TrainingJobRecord.id == job_id, TrainingJobRecord.user_id == user.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found.")
+
+    if job.status in {"completed", "failed"}:
+        return {
+            "success": False,
+            "message": f"Cannot cancel job with terminal status '{job.status}'.",
+            "status": job.status,
+        }
+
+    training_engine.request_cancel_job(job_id)
+    job.status = "cancelled"
+    job.current_step = "Job cancelled by user"
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Training job cancelled.",
+        "status": "cancelled",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Backend Part 3: Model Registry, Versioning & Model Activation
+# ---------------------------------------------------------------------------
+
+@app.post("/api/models/register", status_code=201)
+def register_model_endpoint(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return model_registry_service.register_model(db, user, payload)
+
+
+@app.get("/api/models")
+def list_models_endpoint(
+    task: Optional[str] = None,
+    status: Optional[str] = None,
+    name: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return model_registry_service.list_models(db, user, task=task, status=status, name=name)
+
+
+@app.get("/api/models/active/{task}")
+def get_active_model_endpoint(
+    task: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return model_registry_service.get_active_model_for_task(db, user, task=task)
+
+
+@app.get("/api/models/{model_id}")
+def get_model_detail_endpoint(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return model_registry_service.get_model_detail(db, user, model_id=model_id)
+
+
+@app.get("/api/models/{model_id}/versions")
+def get_model_versions_endpoint(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return model_registry_service.get_model_versions(db, user, model_id=model_id)
+
+
+@app.post("/api/models/{model_id}/activate")
+def activate_model_endpoint(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return model_registry_service.activate_model(db, user, model_id=model_id)
+
+
+@app.post("/api/models/{model_id}/deactivate")
+def deactivate_model_endpoint(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return model_registry_service.deactivate_model(db, user, model_id=model_id)
+
+
+# ---------------------------------------------------------------------------
+# Backend Part 4: Real User-Trained Model Inference & Audit History
+# ---------------------------------------------------------------------------
+
+@app.post("/api/inference/rul")
+def inference_rul(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    features = payload.get("features") if isinstance(payload, dict) and "features" in payload else payload
+    return inference_service.execute_rul_inference(db, user, features)
+
+
+@app.post("/api/inference/classification")
+def inference_classification(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    features = payload.get("features") if isinstance(payload, dict) and "features" in payload else payload
+    return inference_service.execute_classification_inference(db, user, features)
+
+
+@app.post("/api/inference/anomaly")
+def inference_anomaly(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    features = payload.get("features") if isinstance(payload, dict) and "features" in payload else payload
+    return inference_service.execute_anomaly_inference(db, user, features)
+
+
+@app.post("/api/inference/{task}/batch")
+def inference_batch(
+    task: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return inference_service.execute_batch_inference(db, user, task, payload)
+
+
+@app.get("/api/inference/history")
+def get_inference_history(
+    task: Optional[str] = None,
+    model_id: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return inference_service.get_prediction_history(db, user, task=task, model_id=model_id, limit=limit)
+
+
+@app.get("/api/inference/history/{prediction_id}")
+def get_inference_history_detail(
+    prediction_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return inference_service.get_prediction_detail(db, user, prediction_id=prediction_id)
+
+
+# ---------------------------------------------------------------------------
+# Backend Phase 7: ML Explainability, Model Comparison & Decision Support
+# ---------------------------------------------------------------------------
+
+@app.get("/api/models/benchmark/{benchmark_id}/explain")
+def explain_benchmark_endpoint(
+    benchmark_id: str,
+    _: User = Depends(get_current_user),
+):
+    """Global explainability for NASA C-MAPSS benchmark models."""
+    return explainability_service.explain_benchmark_model_global(benchmark_id)
+
+
+@app.get("/api/models/{model_id}/explain")
+def explain_model_endpoint(
+    model_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Global explainability for a registered or benchmark model."""
+    clean_id = model_id.lower().strip()
+    if clean_id.startswith("benchmark_") or clean_id in {"rf_baseline", "lstm_model", "isolation_forest", "nasa_rf", "nasa_lstm", "nasa_anomaly"}:
+        return explainability_service.explain_benchmark_model_global(clean_id)
+    return explainability_service.explain_user_model_global(db, user, model_id=model_id)
+
+
+@app.get("/api/inference/history/{prediction_id}/explain")
+def explain_prediction_endpoint(
+    prediction_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Local explanation for a historical prediction record."""
+    return explainability_service.explain_prediction_local(db, user, prediction_id=prediction_id)
+
+
+@app.post("/api/models/{model_id}/explain/local")
+def explain_local_payload_endpoint(
+    model_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Local explanation for custom or live feature values using the specified model."""
+    features = payload.get("features") if isinstance(payload, dict) and "features" in payload else payload
+    return explainability_service.explain_prediction_local(db, user, model_id=model_id, features=features)
+
+
+@app.post("/api/models/compare")
+def compare_models_endpoint(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Compares 2 or more compatible registered or benchmark models."""
+    model_ids = payload.get("model_ids")
+    if not isinstance(model_ids, list):
+        raise HTTPException(status_code=400, detail="model_ids must be a list of model identifiers.")
+    task = payload.get("task")
+    return comparison_service.compare_models(db, user, model_ids=model_ids, task=task)
+
+
+@app.get("/api/models/{model_name}/evaluation-history")
+def get_evaluation_history_endpoint(
+    model_name: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Retrieves chronological evaluation metrics across versions for a model name."""
+    return comparison_service.get_model_evaluation_history(db, user, model_name=model_name)
+
+
+@app.post("/api/decision-support")
+def generate_decision_support_endpoint(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Generates evidence-backed maintenance advisory report combining ML and RAG."""
+    machine_id = payload.get("machine_id")
+    prediction_id = payload.get("prediction_id")
+    symptoms = payload.get("symptoms")
+    return decision_support_service.generate_decision_support(
+        db, user, machine_id=machine_id, prediction_id=prediction_id, symptoms=symptoms
+    )
+
+
+
+
+

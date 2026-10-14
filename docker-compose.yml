@@ -17,6 +17,8 @@ services:
       # Add backend-only provider keys below if available:
       # - GEMINI_API_KEY=${GEMINI_API_KEY}
       # - GROK_API_KEY=${GROK_API_KEY}
+    volumes:
+      - backend-storage:/app/storage
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -35,3 +37,8 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  backend-storage:
+    driver: local
+

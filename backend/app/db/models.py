@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, Text, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
@@ -14,6 +14,10 @@ class User(Base):
 
     machines = relationship("Machine", back_populates="user", cascade="all, delete-orphan")
     conversations = relationship("CopilotConversation", back_populates="user", cascade="all, delete-orphan")
+    datasets = relationship("UserDataset", back_populates="user", cascade="all, delete-orphan")
+    training_jobs = relationship("TrainingJobRecord", back_populates="user", cascade="all, delete-orphan")
+    registered_models = relationship("ModelRegistryRecord", back_populates="user", cascade="all, delete-orphan")
+    predictions_history = relationship("ModelPredictionRecord", back_populates="user", cascade="all, delete-orphan")
 
 class Machine(Base):
     __tablename__ = "machines"
@@ -187,3 +191,115 @@ class DocumentChunk(Base):
     content = Column(Text, nullable=False)
 
     document = relationship("KnowledgeDoc", back_populates="chunks")
+
+class UserDataset(Base):
+    __tablename__ = "datasets"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True, nullable=False)
+    name = Column(String, nullable=False)
+    original_filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    status = Column(String, default="ready")
+    row_count = Column(Integer, nullable=True)
+    column_count = Column(Integer, nullable=True)
+    numeric_column_count = Column(Integer, nullable=True)
+    categorical_column_count = Column(Integer, nullable=True)
+    missing_value_count = Column(Integer, nullable=True)
+    duplicate_row_count = Column(Integer, nullable=True)
+    memory_size_bytes = Column(Integer, nullable=True)
+    columns_json = Column(Text, nullable=False, default="[]")
+    preview_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
+
+    user = relationship("User", back_populates="datasets")
+    training_jobs = relationship("TrainingJobRecord", back_populates="dataset", cascade="all, delete-orphan")
+    registered_models = relationship("ModelRegistryRecord", back_populates="dataset", cascade="all, delete-orphan")
+
+class TrainingJobRecord(Base):
+    __tablename__ = "training_jobs"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True, nullable=False)
+    dataset_id = Column(String, ForeignKey("datasets.id"), index=True, nullable=False)
+    task = Column(String, nullable=False)  # rul_regression, condition_classification, anomaly_detection
+    target_column = Column(String, nullable=True)
+    feature_columns_json = Column(Text, nullable=False, default="[]")
+    model_type = Column(String, nullable=False)
+    train_split = Column(Float, default=70.0)
+    validation_split = Column(Float, default=15.0)
+    test_split = Column(Float, default=15.0)
+    random_seed = Column(Integer, default=42)
+    status = Column(String, default="queued")  # queued, validating, preprocessing, training, evaluating, saving, completed, failed, cancelled
+    current_step = Column(String, nullable=True)
+    progress = Column(Float, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+    artifact_path = Column(String, nullable=True)
+    metrics_json = Column(Text, nullable=True)
+    logs_json = Column(Text, nullable=True, default="[]")
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
+
+    user = relationship("User", back_populates="training_jobs")
+    dataset = relationship("UserDataset", back_populates="training_jobs")
+    registered_model = relationship("ModelRegistryRecord", back_populates="training_job", uselist=False, cascade="all, delete-orphan")
+
+
+class ModelRegistryRecord(Base):
+    __tablename__ = "model_registry"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True, nullable=False)
+    training_job_id = Column(String, ForeignKey("training_jobs.id"), index=True, nullable=False)
+    dataset_id = Column(String, ForeignKey("datasets.id"), index=True, nullable=False)
+    name = Column(String, nullable=False)
+    task = Column(String, index=True, nullable=False)  # rul_regression, condition_classification, anomaly_detection
+    model_type = Column(String, nullable=False)
+    version = Column(Integer, nullable=False)
+    status = Column(String, index=True, nullable=False, default="inactive")  # active, inactive
+    artifact_path = Column(String, nullable=False)
+    metrics_json = Column(Text, nullable=False, default="{}")
+    training_metadata_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
+    activated_at = Column(DateTime, nullable=True)
+    deactivated_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", "version", name="uq_user_model_version"),
+        UniqueConstraint("training_job_id", name="uq_training_job_registered"),
+        Index("ix_model_registry_user_task_status", "user_id", "task", "status"),
+    )
+
+    user = relationship("User", back_populates="registered_models")
+    training_job = relationship("TrainingJobRecord", back_populates="registered_model")
+    dataset = relationship("UserDataset", back_populates="registered_models")
+    predictions = relationship("ModelPredictionRecord", back_populates="model", cascade="all, delete-orphan")
+
+
+class ModelPredictionRecord(Base):
+    __tablename__ = "model_predictions"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True, nullable=False)
+    model_id = Column(String, ForeignKey("model_registry.id"), index=True, nullable=False)
+    task = Column(String, index=True, nullable=False)
+    input_metadata_json = Column(Text, nullable=False, default="{}")
+    prediction_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
+
+    __table_args__ = (
+        Index("ix_model_predictions_user_task", "user_id", "task"),
+        Index("ix_model_predictions_user_model", "user_id", "model_id"),
+    )
+
+    user = relationship("User", back_populates="predictions_history")
+    model = relationship("ModelRegistryRecord", back_populates="predictions")
+
+
+
+

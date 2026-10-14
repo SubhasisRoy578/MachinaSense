@@ -59,5 +59,9 @@ class Settings:
     MAX_FILE_SIZE_BYTES: int = 25 * 1024 * 1024  # 25 MB
     ALLOWED_EXTENSIONS: set = {".pdf", ".docx", ".txt"}
     TELEMETRY_ALLOWED_EXTENSIONS: set = {".csv"}
+    DATASETS_DIR: str = os.getenv("DATASETS_DIR", os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage", "datasets"))
+    MODELS_DIR: str = os.getenv("MODELS_DIR", os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage", "models"))
+    INFERENCE_MAX_BATCH_SIZE: int = int(os.getenv("INFERENCE_MAX_BATCH_SIZE", "500"))
 
 settings = Settings()
+

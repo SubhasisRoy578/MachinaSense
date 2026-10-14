@@ -4,8 +4,9 @@ import { api } from '../../services/api';
 import type { DiagnosticCase } from '../../types/models';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Stethoscope, AlertOctagon, FileCheck, Target, ArrowRight, BrainCircuit, ShieldAlert, Plus } from 'lucide-react';
+import { Stethoscope, AlertOctagon, FileCheck, Target, ArrowRight, BrainCircuit, ShieldAlert, Plus, FileText } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { DecisionSupportPanel } from './DecisionSupportPanel';
 
 export function DiagnosticsPage() {
   const [searchParams] = useSearchParams();
@@ -18,6 +19,7 @@ export function DiagnosticsPage() {
   const [creating, setCreating] = useState(false);
   const [createMachineId, setCreateMachineId] = useState('');
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'cases' | 'decision_support'>('cases');
 
   const fetchCases = useCallback(async () => {
     setLoading(true);
@@ -151,10 +153,41 @@ export function DiagnosticsPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Diagnostic History</CardTitle>
-        </CardHeader>
+      {/* Workflow Navigation */}
+      <div className="flex items-center gap-1 bg-slate-950 p-1 border border-slate-800 rounded-lg font-mono text-xs w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab('cases')}
+          className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors ${
+            activeTab === 'cases'
+              ? 'bg-slate-800 text-accent font-semibold shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Stethoscope className="w-3.5 h-3.5" />
+          <span>1. Investigation Cases ({cases.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('decision_support')}
+          className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors ${
+            activeTab === 'decision_support'
+              ? 'bg-slate-800 text-accent font-semibold shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>2. Evidence-Backed Decision Support</span>
+        </button>
+      </div>
+
+      {activeTab === 'decision_support' ? (
+        <DecisionSupportPanel machineId={createMachineId || (machines[0]?.id)} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Diagnostic History</CardTitle>
+          </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -241,12 +274,25 @@ export function DiagnosticsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="text-slate-500 text-xs mb-2 font-mono">{formatDistanceToNow(new Date(diag.createdTime), { addSuffix: true })}</div>
-                        <button 
-                          onClick={() => navigate(`/diagnostics/${diag.id}`)}
-                          className="inline-flex items-center justify-center px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider text-accent border border-accent/30 hover:bg-accent/10 transition-colors"
-                        >
-                          Inspect Case <ArrowRight className="w-3 h-3 ml-1" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCreateMachineId(diag.machineId);
+                              setActiveTab('decision_support');
+                            }}
+                            className="inline-flex items-center justify-center px-2 py-1.5 rounded text-xs font-mono text-purple-400 hover:text-purple-300 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 transition-colors"
+                            title="Generate advisory decision support report"
+                          >
+                            <FileText className="w-3 h-3 mr-1" /> Advisory
+                          </button>
+                          <button 
+                            onClick={() => navigate(`/diagnostics/${diag.id}`)}
+                            className="inline-flex items-center justify-center px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider text-accent border border-accent/30 hover:bg-accent/10 transition-colors"
+                          >
+                            Inspect Case <ArrowRight className="w-3 h-3 ml-1" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -256,6 +302,7 @@ export function DiagnosticsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
