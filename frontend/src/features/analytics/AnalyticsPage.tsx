@@ -46,7 +46,7 @@ export function AnalyticsPage() {
             console.warn("Could not fetch fleet analytics:", err);
             return null;
           }),
-          api.explainability.getBenchmark('rf').catch(err => {
+          api.explainability.getBenchmark('rf').catch((err: any) => {
             console.warn("Could not fetch benchmark explanation:", err);
             return null;
           }),
@@ -466,16 +466,16 @@ export function AnalyticsPage() {
               </div>
               <div className="flex justify-between items-center text-xs font-mono">
                 <span className="text-slate-400">Attribution Method:</span>
-                <span className="text-accent font-semibold">{benchmarkExplanation?.method || 'Mean Decrease in Impurity (MDI)'}</span>
+                <span className="text-accent font-semibold">{benchmarkExplanation?.explanation_method || 'Mean Decrease in Impurity (MDI)'}</span>
               </div>
 
-              {benchmarkExplanation?.feature_importances && benchmarkExplanation.feature_importances.length > 0 ? (
+              {benchmarkExplanation?.features && benchmarkExplanation.features.length > 0 ? (
                 <div className="space-y-2 pt-1">
                   <span className="text-[11px] text-slate-400 font-mono font-bold block uppercase">
                     Top Contributing Sensors to RUL Degradation:
                   </span>
                   <div className="space-y-1.5 font-mono text-xs">
-                    {benchmarkExplanation.feature_importances.slice(0, 5).map((feat, idx) => (
+                    {benchmarkExplanation.features.slice(0, 5).map((feat, idx: number) => (
                       <div key={idx} className="space-y-0.5">
                         <div className="flex justify-between text-[11px]">
                           <span className="text-slate-300 font-bold">{feat.feature}</span>

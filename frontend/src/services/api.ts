@@ -6,31 +6,102 @@ import type { GlobalExplanationResponse, LocalExplanationResponse } from '../typ
 import type { ModelComparisonResponse, ModelEvaluationHistoryResponse } from '../types/comparison';
 import type { DecisionSupportResponse } from '../types/decisionSupport';
 
-const BASE = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://machinasense.onrender.com' : '')).replace(/\/$/, '');
+const BASE = (
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.PROD ? 'https://machinasense.onrender.com' : 'http://localhost:8000')
+).replace(/\/$/, '');
+
 let tokenGetter: (() => Promise<string | null>) | null = null;
-export type SystemStatus = { mode: 'live_rag' | 'live_fallback' | 'live_no_rag' | 'error'; label: string; message?: string; modelsLoaded?: boolean; baseUrl?: string; llmStatus?: string };
-export function configureApiAuth(getToken: () => Promise<string | null>) { tokenGetter = getToken; }
-async function request(path: string, init: RequestInit = {}) {
-  if (!BASE) throw new Error('VITE_API_BASE_URL is not configured.');
+export type SystemStatus = {
+  mode: 'live_rag' | 'live_fallback' | 'live_no_rag' | 'error';
+  label: string;
+  message?: string;
+  modelsLoaded?: boolean;
+  database?: string;
+  baseUrl?: string;
+  llmStatus?: string;
+};
+
+export function configureApiAuth(getToken: () => Promise<string | null>) {
+  tokenGetter = getToken;
+}
+
+async function request<T = any>(path: string, init: RequestInit = {}): Promise<T> {
   const token = tokenGetter ? await tokenGetter() : null;
-  if (!token) throw new Error('Authenticated session required.');
-  const headers = new Headers(init.headers); headers.set('Authorization', `Bearer ${token}`);
+  if (!token) throw new Error('Authenticated session required. Please sign in.');
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${token}`);
   if (!(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${BASE}${path}`, { ...init, headers });
-  if (response.status === 204) return null;
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}`, { ...init, headers });
+  } catch (err: any) {
+    throw new Error(`Network error connecting to backend service (${err.message || 'connection failed'}). Please check your connection.`);
+  }
+
+  if (response.status === 204) return null as unknown as T;
   const body = await response.json().catch(() => ({}));
-  if (response.status === 401) throw new Error(body.detail || 'Session expired or unauthenticated. Please sign in again.');
-  if (response.status === 403) throw new Error(body.detail || 'Access denied. You do not have permission to access this resource.');
-  if (!response.ok) throw new Error(body.detail || `Request failed (${response.status})`);
+  const reqId = response.headers.get('x-request-id');
+  const reqIdSuffix = reqId ? ` (Trace: ${reqId})` : '';
+
+  if (response.status === 401) throw new Error((body.detail || 'Session expired or unauthenticated. Please sign in again.') + reqIdSuffix);
+  if (response.status === 403) throw new Error((body.detail || 'Access denied. You do not have permission to access this resource.') + reqIdSuffix);
+  if (response.status === 503) throw new Error((body.detail || 'Service is temporarily degraded or undergoing initialization. Please retry shortly.') + reqIdSuffix);
+  if (!response.ok) throw new Error((body.detail || `Request failed (${response.status})`) + reqIdSuffix);
   return body;
 }
-function mapMachine(m: any): Machine { return { id:m.id, name:m.name, type:m.type || m.model, location:m.location, status:m.status === 'offline' ? 'offline' : m.status, rulDays:m.rulDays ?? 0, rulConfidence:m.rulConfidence ?? 0, failureRisk:m.failureRisk ?? 0, lastUpdated:m.lastUpdated }; }
+
+function mapMachine(m: any): Machine {
+  return {
+    id: m.id,
+    name: m.name,
+    type: m.type || m.model,
+    location: m.location,
+    status: m.status === 'offline' ? 'offline' : m.status,
+    rulDays: m.rulDays ?? 0,
+    rulConfidence: m.rulConfidence ?? 0,
+    failureRisk: m.failureRisk ?? 0,
+    lastUpdated: m.lastUpdated,
+  };
+}
+
 export function subscribeSystemStatus(listener: (value: SystemStatus) => void) {
-  if (!BASE) { listener({ mode: 'error', label: 'BACKEND NOT CONFIGURED', message: 'Set VITE_API_BASE_URL.' }); return () => {}; }
-  fetch(`${BASE}/health`).then(r => r.ok ? listener({mode:'live_rag',label:'LIVE ML + RAG'}) : listener({mode:'error',label:'BACKEND ERROR'})).catch(() => listener({mode:'error',label:'BACKEND UNREACHABLE'}));
+  fetch(`${BASE}/health`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data) => {
+      if (!data) {
+        listener({ mode: 'error', label: 'BACKEND ERROR', baseUrl: BASE });
+      } else if (data.status === 'healthy') {
+        listener({
+          mode: 'live_rag',
+          label: 'LIVE ML + RAG',
+          modelsLoaded: data.models_loaded,
+          database: data.database,
+          baseUrl: BASE,
+        });
+      } else {
+        listener({
+          mode: 'live_fallback',
+          label: 'DEGRADED SERVICE',
+          message: 'Backend running in degraded mode',
+          modelsLoaded: data.models_loaded,
+          database: data.database,
+          baseUrl: BASE,
+        });
+      }
+    })
+    .catch(() => listener({ mode: 'error', label: 'BACKEND UNREACHABLE', baseUrl: BASE }));
   return () => {};
 }
-export async function checkBackendHealth() { if (!BASE) throw new Error('VITE_API_BASE_URL is not configured.'); const r = await fetch(`${BASE}/health`); if (!r.ok) throw new Error('Backend unavailable'); return r.json(); }
+
+export async function checkBackendHealth() {
+  const r = await fetch(`${BASE}/health`).catch((err) => {
+    throw new Error(`Backend service unreachable: ${err.message}`);
+  });
+  if (!r.ok) throw new Error(`Backend reported degraded status (${r.status})`);
+  return r.json();
+}
 export const api = {
   machines: {
     list: async (): Promise<Machine[]> => (await request('/api/machines')).map(mapMachine),
@@ -191,6 +262,15 @@ export const api = {
       const qs = search.toString();
       return request(`/api/inference/history${qs ? `?${qs}` : ''}`);
     },
+    history: async (params?: { task?: string; model_id?: string; limit?: number }): Promise<{ predictions: PredictionHistoryRecord[]; total: number; records: PredictionHistoryRecord[] }> => {
+      const search = new URLSearchParams();
+      if (params?.task) search.set('task', params.task);
+      if (params?.model_id) search.set('model_id', params.model_id);
+      if (params?.limit) search.set('limit', String(params.limit));
+      const qs = search.toString();
+      const res = await request<{ predictions: PredictionHistoryRecord[]; total: number }>(`/api/inference/history${qs ? `?${qs}` : ''}`);
+      return { ...res, records: res.predictions };
+    },
     getHistoryDetail: async (id: string): Promise<PredictionHistoryRecord> =>
       request(`/api/inference/history/${encodeURIComponent(id)}`),
   },
@@ -198,6 +278,8 @@ export const api = {
     getModelGlobal: async (id: string): Promise<GlobalExplanationResponse> =>
       request(`/api/models/${encodeURIComponent(id)}/explain`),
     getBenchmarkGlobal: async (id: string): Promise<GlobalExplanationResponse> =>
+      request(`/api/models/benchmark/${encodeURIComponent(id)}/explain`),
+    getBenchmark: async (id: string): Promise<GlobalExplanationResponse> =>
       request(`/api/models/benchmark/${encodeURIComponent(id)}/explain`),
     getPredictionLocal: async (id: string): Promise<LocalExplanationResponse> =>
       request(`/api/inference/history/${encodeURIComponent(id)}/explain`),

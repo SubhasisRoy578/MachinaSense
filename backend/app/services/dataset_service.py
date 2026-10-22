@@ -17,7 +17,8 @@ from app.db.models import UserDataset
 logger = logging.getLogger("machinasense.datasets")
 
 def sanitize_filename(filename: str) -> str:
-    cleaned = re.sub(r"[^a-zA-Z0-9_.-]", "_", os.path.basename(filename).replace("\\", "/").split("/")[-1])
+    base = os.path.basename(filename.replace("\\", "/")).split("/")[-1].strip()
+    cleaned = re.sub(r"[^a-zA-Z0-9_.-]", "_", base).strip(". _")
     return cleaned or "dataset.csv"
 
 def _safe_float(val: Any) -> Optional[float]:

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../services/api';
 import type { ModelComparisonResponse, ModelComparisonMetric } from '../../types/comparison';
 import type { RegisteredModel } from '../../types/training';
-import { GitCompare, CheckCircle2, AlertTriangle, XCircle, Info, Trophy, Layers, RefreshCw } from 'lucide-react';
+import { GitCompare, CheckCircle2, AlertTriangle, XCircle, Info, Trophy, RefreshCw } from 'lucide-react';
 
 interface ModelComparisonViewProps {
   initialModelIds?: string[];
@@ -35,7 +35,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ initia
     loadModels();
   }, []);
 
-  const runComparison = async (idsToCompare: string[]) => {
+  const runComparison = useCallback(async (idsToCompare: string[]) => {
     if (idsToCompare.length < 2) {
       setError('Select at least 2 models to perform a comparison.');
       setComparison(null);
@@ -52,13 +52,28 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ initia
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (selectedIds.length >= 2) {
-      runComparison(selectedIds);
-    }
-  }, []);
+    let ignore = false;
+    const targets = initialModelIds && initialModelIds.length >= 2 ? initialModelIds : ['benchmark_rf', 'benchmark_lstm'];
+    const fetchInitial = async () => {
+      try {
+        const res = await api.comparison.compare(targets);
+        if (!ignore) {
+          setComparison(res);
+        }
+      } catch (err: any) {
+        if (!ignore) {
+          setError(err.message || 'Comparison failed.');
+        }
+      }
+    };
+    void fetchInitial();
+    return () => {
+      ignore = true;
+    };
+  }, [initialModelIds]);
 
   const handleToggleModel = (id: string) => {
     const next = selectedIds.includes(id)

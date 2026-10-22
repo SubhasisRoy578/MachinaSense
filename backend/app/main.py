@@ -5,14 +5,14 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 import pandas as pd
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, Response
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.auth.clerk import get_current_user
-from app.config import settings
+from app.config import settings, validate_configuration
 from app.db.models import AnomalyEvent, CopilotConversation, CopilotMessage, DiagnosticCase, DocumentChunk, KnowledgeDoc, Machine, MaintenanceTask, Prediction, SensorReading, User, UserDataset, TrainingJobRecord, ModelRegistryRecord, ModelPredictionRecord
-from app.db.session import get_db, init_db
+from app.db.session import get_db, init_db, check_db_ping
 from app.ml_service import FEATURE_COLS, ml_service
 from app.rag.chunker import chunk_pages
 from app.rag.extractor import DocumentExtractionError, extract_text
@@ -27,20 +27,140 @@ from app.services import (
 )
 from app.services.llm_service import llm_service
 
-logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL, logging.INFO)); logger = logging.getLogger("machinasense")
+logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL, logging.INFO))
+logger = logging.getLogger("machinasense")
+
 def sanitize_filename(filename: str) -> str:
-    return re.sub(r"[^a-zA-Z0-9_.-]", "_", os.path.basename(filename).replace("\\", "/").split("/")[-1]) or "document.txt"
+    base = os.path.basename(filename.replace("\\", "/")).split("/")[-1].strip()
+    cleaned = re.sub(r"[^a-zA-Z0-9_.-]", "_", base).strip(". _")
+    return cleaned or "document.txt"
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    init_db(); ml_service.load_artifacts(); os.makedirs(settings.DATASETS_DIR, exist_ok=True); os.makedirs(settings.MODELS_DIR, exist_ok=True); yield
-app = FastAPI(title=settings.PROJECT_NAME, version="3.0.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS, allow_credentials=True, allow_methods=["GET","POST","PATCH","DELETE"], allow_headers=["Authorization","Content-Type"])
+    # Validate runtime configuration
+    for issue in validate_configuration():
+        logger.warning("Configuration advisory: %s", issue)
+
+    try:
+        init_db()
+        logger.info("Database initialized successfully.")
+    except Exception as exc:
+        logger.critical("Database initialization encountered an error at startup (service degraded): %s", exc)
+
+    try:
+        ml_service.load_artifacts()
+    except Exception as exc:
+        logger.critical("Failed loading ML benchmark artifacts (service degraded): %s", exc)
+
+    os.makedirs(settings.DATASETS_DIR, exist_ok=True)
+    os.makedirs(settings.MODELS_DIR, exist_ok=True)
+    yield
+
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
+)
+
+@app.middleware("http")
+async def correlation_id_and_logging_middleware(request: Request, call_next):
+    req_id = request.headers.get("X-Request-ID")
+    if not req_id:
+        req_id = f"req_{uuid.uuid4().hex[:16]}"
+    request.state.request_id = req_id
+
+    start_time = datetime.now(timezone.utc)
+    try:
+        response = await call_next(request)
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+        response.headers["X-Request-ID"] = req_id
+
+        # Safe structured logging - omit noisy ping paths and NEVER log credentials or payload data
+        if request.url.path not in ("/health/live",):
+            logger.info(
+                "request_completed method=%s path=%s status=%d duration_ms=%.2f request_id=%s",
+                request.method,
+                request.url.path,
+                response.status_code,
+                duration_ms,
+                req_id,
+            )
+        return response
+    except Exception as exc:
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+        logger.exception(
+            "request_error method=%s path=%s duration_ms=%.2f request_id=%s error=%s",
+            request.method,
+            request.url.path,
+            duration_ms,
+            req_id,
+            str(exc),
+        )
+        raise
+
 @app.exception_handler(Exception)
 async def safe_error(request: Request, exc: Exception):
-    logger.exception("Unhandled error on %s", request.url.path); return JSONResponse(status_code=500, content={"detail":"An internal server error occurred."})
+    req_id = getattr(request.state, "request_id", None) or f"req_{uuid.uuid4().hex[:16]}"
+    logger.exception("Unhandled error on %s (request_id=%s)", request.url.path, req_id)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal server error occurred.", "request_id": req_id},
+        headers={"X-Request-ID": req_id},
+    )
+
+@app.get("/health/live")
+def liveness():
+    """Liveness probe verifying that the API process is active and accepting requests."""
+    return {"status": "alive", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+@app.get("/health/ready")
+def readiness():
+    """Readiness probe checking database connectivity and ML engine readiness."""
+    db_connected = check_db_ping()
+    storage_writable = os.access(settings.DATASETS_DIR, os.W_OK) and os.access(settings.MODELS_DIR, os.W_OK)
+    is_ready = db_connected and ml_service.is_loaded
+
+    status_code = status.HTTP_200_OK if is_ready else status.HTTP_503_SERVICE_UNAVAILABLE
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "ready" if is_ready else "not_ready",
+            "ready": is_ready,
+            "checks": {
+                "database": {"connected": db_connected},
+                "ml_models": {"loaded": ml_service.is_loaded},
+                "storage": {"writable": storage_writable},
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
 @app.get("/health")
 def health():
-    return {"status":"healthy" if ml_service.is_loaded else "degraded", "backend":"live", "models_loaded":ml_service.is_loaded, "rag_status":"ready", "llm_status":"provider-chain", "dataset":"NASA C-MAPSS FD001 Benchmark", "models":["Random Forest Regressor Baseline","PyTorch LSTM Temporal RUL","Isolation Forest Anomaly Detector","TF-IDF Vector RAG Engine"], "artifacts_path":"backend/artifacts"}
+    db_connected = check_db_ping()
+    is_healthy = ml_service.is_loaded and db_connected
+    return {
+        "status": "healthy" if is_healthy else "degraded",
+        "backend": "live",
+        "database": "connected" if db_connected else "disconnected",
+        "models_loaded": ml_service.is_loaded,
+        "rag_status": "ready",
+        "llm_status": "provider-chain",
+        "dataset": "NASA C-MAPSS FD001 Benchmark",
+        "models": [
+            "Random Forest Regressor Baseline",
+            "PyTorch LSTM Temporal RUL",
+            "Isolation Forest Anomaly Detector",
+            "TF-IDF Vector RAG Engine",
+        ],
+        "artifacts_path": "backend/artifacts",
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
+    }
 def machine_for(db: Session, user: User, machine_id: str) -> Machine:
     item=db.query(Machine).filter(Machine.id==machine_id,Machine.user_id==user.id).first()
     if not item: raise HTTPException(404,"Machine not found.")
@@ -165,15 +285,16 @@ async def document_upload(file:UploadFile=File(...),category:str=Form("Manual"),
     db.commit();return {"id":d.id,"title":d.title,"type":d.type,"size":d.size,"uploadDate":d.upload_date.isoformat(),"processingStatus":"ready","indexedChunks":d.indexed_chunks,"sourceCategory":d.source_category}
 @app.post("/api/knowledge/search")
 def document_search(payload: dict, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    query = (payload.get("query") or "").strip()
-    if not query:
+    raw_query = (payload.get("query") or "").strip()
+    if not raw_query:
         raise HTTPException(400, "Search query cannot be empty.")
-    rows = db.query(DocumentChunk).filter(DocumentChunk.user_id == user.id).all()
+    query = raw_query[:1000]
+    rows = db.query(DocumentChunk).filter(DocumentChunk.user_id == user.id).limit(2000).all()
     if not rows:
         return []
     
-    top_k = int(payload.get("top_k", 5))
-    min_score = float(payload.get("min_score", 0.05))
+    top_k = min(max(1, int(payload.get("top_k", 5))), 50)
+    min_score = max(0.0, min(1.0, float(payload.get("min_score", 0.05))))
 
     try:
         from sklearn.feature_extraction.text import TfidfVectorizer
@@ -620,9 +741,13 @@ async def upload_dataset(
         preview_json=json.dumps(processed["preview"]),
     )
 
-    db.add(dataset_record)
-    db.commit()
-    db.refresh(dataset_record)
+    try:
+        db.add(dataset_record)
+        db.commit()
+        db.refresh(dataset_record)
+    except Exception:
+        dataset_service.delete_dataset_file(stored_path)
+        raise
 
     return dataset_service.serialize_dataset_view(dataset_record)
 
@@ -791,7 +916,7 @@ def cancel_training_job(
     if not job:
         raise HTTPException(status_code=404, detail="Training job not found.")
 
-    if job.status in {"completed", "failed"}:
+    if job.status in {"completed", "failed", "cancelled"}:
         return {
             "success": False,
             "message": f"Cannot cancel job with terminal status '{job.status}'.",
@@ -801,6 +926,10 @@ def cancel_training_job(
     training_engine.request_cancel_job(job_id)
     job.status = "cancelled"
     job.current_step = "Job cancelled by user"
+    job.completed_at = datetime.now(timezone.utc)
+    current_logs = json.loads(job.logs_json) if job.logs_json else []
+    current_logs.append(f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] Cancellation requested by user.")
+    job.logs_json = json.dumps(current_logs)
     db.commit()
 
     return {

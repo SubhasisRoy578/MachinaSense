@@ -214,6 +214,8 @@ def execute_rul_inference(
     """Runs RUL regression inference using the user's active RUL model."""
     if not isinstance(features, dict) or not features:
         raise HTTPException(status_code=400, detail="Features dictionary is required and cannot be empty.")
+    if len(features) > 200:
+        raise HTTPException(status_code=400, detail="Features dictionary exceeds maximum allowed limit of 200 items.")
 
     model = resolve_active_model(db, user, "rul_regression")
     entry = get_cached_or_load_artifact(model, user.id)
@@ -267,6 +269,8 @@ def execute_classification_inference(
     """Runs condition classification inference using the user's active classification model."""
     if not isinstance(features, dict) or not features:
         raise HTTPException(status_code=400, detail="Features dictionary is required and cannot be empty.")
+    if len(features) > 200:
+        raise HTTPException(status_code=400, detail="Features dictionary exceeds maximum allowed limit of 200 items.")
 
     model = resolve_active_model(db, user, "condition_classification")
     entry = get_cached_or_load_artifact(model, user.id)
@@ -330,6 +334,8 @@ def execute_anomaly_inference(
     """Runs anomaly detection inference using the user's active Isolation Forest model."""
     if not isinstance(features, dict) or not features:
         raise HTTPException(status_code=400, detail="Features dictionary is required and cannot be empty.")
+    if len(features) > 200:
+        raise HTTPException(status_code=400, detail="Features dictionary exceeds maximum allowed limit of 200 items.")
 
     model = resolve_active_model(db, user, "anomaly_detection")
     entry = get_cached_or_load_artifact(model, user.id)

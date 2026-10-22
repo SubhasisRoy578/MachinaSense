@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../services/api';
 import type { DecisionSupportResponse } from '../../types/decisionSupport';
 import {
@@ -28,7 +28,7 @@ export const DecisionSupportPanel: React.FC<DecisionSupportPanelProps> = ({
   const [data, setData] = useState<DecisionSupportResponse | null>(null);
   const [symptomsInput, setSymptomsInput] = useState<string>('');
 
-  const loadDecisionSupport = async (querySymptoms?: string) => {
+  const loadDecisionSupport = useCallback(async (querySymptoms?: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -43,10 +43,33 @@ export const DecisionSupportPanel: React.FC<DecisionSupportPanelProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [machineId, predictionId]);
 
   useEffect(() => {
-    loadDecisionSupport();
+    let ignore = false;
+    const fetchInitial = async () => {
+      try {
+        const res = await api.decisionSupport.generate({
+          machine_id: machineId,
+          prediction_id: predictionId,
+        });
+        if (!ignore) {
+          setData(res);
+        }
+      } catch (err: any) {
+        if (!ignore) {
+          setError(err.message || 'Failed to generate decision support report.');
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
+    void fetchInitial();
+    return () => {
+      ignore = true;
+    };
   }, [machineId, predictionId]);
 
   const handleSearchSymptoms = (e: React.FormEvent) => {

@@ -65,3 +65,18 @@ class Settings:
 
 settings = Settings()
 
+def validate_configuration() -> List[str]:
+    """Validates core configuration and returns issues or warnings without crashing."""
+    issues: List[str] = []
+    if settings.ENVIRONMENT == "production":
+        db_url = os.getenv("DATABASE_URL", "")
+        if not db_url:
+            issues.append("DATABASE_URL is not set for production environment.")
+        elif db_url.startswith("sqlite"):
+            issues.append("Production requires a PostgreSQL database, but SQLite URL was provided.")
+        if not settings.CLERK_JWKS_URL:
+            issues.append("CLERK_JWKS_URL is required in production for Clerk JWT verification.")
+        if "*" in settings.CORS_ORIGINS:
+            issues.append("Wildcard '*' in CORS origins is not permitted in production.")
+    return issues
+

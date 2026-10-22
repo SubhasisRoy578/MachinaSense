@@ -218,6 +218,16 @@ def _update_job_step(db, job_id: str, status: str, step: str, progress: Optional
     db.commit()
 
 
+def _mark_job_cancelled(job: TrainingJobRecord, db: Any) -> None:
+    job.status = "cancelled"
+    job.current_step = "Job cancelled by user"
+    job.completed_at = datetime.datetime.now(datetime.timezone.utc)
+    current_logs = json.loads(job.logs_json) if job.logs_json else []
+    current_logs.append(f"[{datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S')}] Job cancelled by user.")
+    job.logs_json = json.dumps(current_logs)
+    db.commit()
+
+
 def run_training_pipeline(job_id: str, user_id: str) -> None:
     """
     Background worker function executing end-to-end ML training on real dataset.
@@ -237,9 +247,7 @@ def run_training_pipeline(job_id: str, user_id: str) -> None:
             return
 
         if is_job_cancelled(job_id):
-            job.status = "cancelled"
-            job.current_step = "Cancelled by user"
-            db.commit()
+            _mark_job_cancelled(job, db)
             return
 
         # 1. Validating
@@ -262,8 +270,7 @@ def run_training_pipeline(job_id: str, user_id: str) -> None:
 
         # 2. Preprocessing
         if is_job_cancelled(job_id):
-            job.status = "cancelled"
-            db.commit()
+            _mark_job_cancelled(job, db)
             return
 
         _update_job_step(db, job_id, "preprocessing", "Imputing, encoding, and scaling features", progress=35.0, log="Fitting preprocessor and splitting partitions...")
@@ -317,8 +324,7 @@ def run_training_pipeline(job_id: str, user_id: str) -> None:
 
         # 3. Model Training
         if is_job_cancelled(job_id):
-            job.status = "cancelled"
-            db.commit()
+            _mark_job_cancelled(job, db)
             return
 
         _update_job_step(db, job_id, "training", f"Training algorithm: {model_type}", progress=55.0, log=f"Training {model_type} on {len(X_train_val)} samples...")
@@ -382,8 +388,7 @@ def run_training_pipeline(job_id: str, user_id: str) -> None:
 
         # 4. Evaluating
         if is_job_cancelled(job_id):
-            job.status = "cancelled"
-            db.commit()
+            _mark_job_cancelled(job, db)
             return
 
         _update_job_step(db, job_id, "evaluating", "Computing real test evaluation metrics", progress=80.0, log="Evaluating trained model on independent test partition...")
@@ -451,8 +456,7 @@ def run_training_pipeline(job_id: str, user_id: str) -> None:
 
         # 5. Saving Artifact
         if is_job_cancelled(job_id):
-            job.status = "cancelled"
-            db.commit()
+            _mark_job_cancelled(job, db)
             return
 
         _update_job_step(db, job_id, "saving", "Persisting model artifact and preprocessing pipeline", progress=95.0, log="Saving versioned model artifact to storage...")
