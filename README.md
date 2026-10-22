@@ -185,7 +185,7 @@ GROK_MODEL=grok-3-mini
 ### Frontend Configuration (`frontend/.env`)
 
 ```ini
-VITE_API_BASE_URL=https://machinasense.onrender.com
+VITE_API_BASE_URL=https://machinasense-backend.onrender.com
 VITE_CLERK_PUBLISHABLE_KEY=pk_live_...
 ```
 
@@ -321,7 +321,7 @@ npm run build
 - Build command: `npm run build` (configured in `netlify.toml`).
 - Publish directory: `dist`.
 - Redirect rule: `/* -> /index.html` (HTTP 200 SPA rewrite).
-- Set `VITE_API_BASE_URL` to your backend URL (e.g. `https://machinasense.onrender.com`).
+- Set `VITE_API_BASE_URL` to your backend URL (e.g. `https://machinasense-backend.onrender.com`).
 - Set `VITE_CLERK_PUBLISHABLE_KEY` in Netlify environment settings.
 
 ### Render (Backend)

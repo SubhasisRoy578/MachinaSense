@@ -186,3 +186,95 @@ def test_configuration_validation_helper():
     """Verify that validate_configuration inspects environment variables safely."""
     issues = validate_configuration()
     assert isinstance(issues, list)
+
+
+def test_render_database_url_resolution_and_production_strictness(monkeypatch):
+    """Verify DATABASE_URL resolution from Render env vars, postgres:// fix, and production enforcement."""
+    from app.config import Settings
+
+    test_settings = Settings()
+    # 1. Heroku/Render postgres:// prefix rewrite
+    monkeypatch.setenv("DATABASE_URL", "postgres://user:pass@host:5432/db")
+    test_settings.ENVIRONMENT = "production"
+    assert test_settings.DATABASE_URL == "postgresql://user:pass@host:5432/db"
+
+    # 2. Render internal database url fallback
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("DATABASE_INTERNAL_URL", "postgresql://user:pass@dpg-xxx:5432/machinasense")
+    test_settings.ENVIRONMENT = "production"
+    assert test_settings.DATABASE_URL == "postgresql://user:pass@dpg-xxx:5432/machinasense"
+
+    # 3. Production rejects ephemeral SQLite
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///./machinasense.db")
+    test_settings.ENVIRONMENT = "production"
+    with pytest.raises(RuntimeError, match="Production requires a PostgreSQL database"):
+        _ = test_settings.DATABASE_URL
+
+    # 4. Production rejects missing DATABASE_URL
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_INTERNAL_URL", raising=False)
+    monkeypatch.delenv("INTERNAL_DATABASE_URL", raising=False)
+    monkeypatch.delenv("POSTGRES_URL", raising=False)
+    test_settings.ENVIRONMENT = "production"
+    with pytest.raises(RuntimeError, match="DATABASE_URL .* must be configured in production"):
+        _ = test_settings.DATABASE_URL
+
+
+def test_production_cors_safeguard(monkeypatch):
+    """Verify that Netlify origin is always included in production and wildcard * is rejected."""
+    from app.config import Settings
+
+    test_settings = Settings()
+    test_settings.ENVIRONMENT = "production"
+
+    # Custom origin provided without Netlify - Netlify origin is automatically added
+    monkeypatch.setenv("CORS_ORIGINS", "https://custom-domain.com")
+    origins = test_settings.CORS_ORIGINS
+    assert "https://machinasense.netlify.app" in origins
+    assert "https://custom-domain.com" in origins
+
+    # Wildcard in production is filtered out
+    monkeypatch.setenv("CORS_ORIGINS", "*, https://other.com/")
+    origins = test_settings.CORS_ORIGINS
+    assert "*" not in origins
+    assert "https://other.com" in origins
+    assert "https://machinasense.netlify.app" in origins
+
+
+def test_copilot_resilient_to_deleted_machine():
+    """Verify that Copilot conversations and messages do not crash when associated machine is deleted."""
+    from app.db.models import Machine
+
+    db = SessionLocal()
+    mid = f"m_test_{uuid.uuid4().hex[:8]}"
+    try:
+        # Create a test machine
+        machine = Machine(
+            id=mid,
+            user_id=TEST_USER_ID,
+            name="Test Turbine For Copilot",
+            machine_type="CFM56",
+            location="Test Bay",
+        )
+        db.add(machine)
+        db.commit()
+
+        with TestClient(app) as client:
+            # Create conversation linked to machine
+            c_resp = client.post("/api/copilot/conversations", headers=AUTH_HEADERS, json={"machine_id": mid, "title": "Test Chat"})
+            assert c_resp.status_code == 201
+            cid = c_resp.json()["id"]
+
+            # Now delete the machine
+            db.delete(machine)
+            db.commit()
+
+            # Sending message to the conversation should NOT 404; it unbinds gracefully and responds
+            msg_resp = client.post(f"/api/copilot/conversations/{cid}/messages", headers=AUTH_HEADERS, json={"content": "What is the status of the plant?"})
+            assert msg_resp.status_code == 201
+            msg_data = msg_resp.json()
+            assert "content" in msg_data
+            assert msg_data["content"] != ""
+    finally:
+        db.close()
+

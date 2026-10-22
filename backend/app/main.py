@@ -42,10 +42,23 @@ async def lifespan(_: FastAPI):
         logger.warning("Configuration advisory: %s", issue)
 
     try:
-        init_db()
-        logger.info("Database initialized successfully.")
+        from alembic.config import Config
+        from alembic import command
+        alembic_ini_path = os.path.normpath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini"))
+        if os.path.exists(alembic_ini_path):
+            alembic_cfg = Config(alembic_ini_path)
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Alembic database migrations applied successfully.")
+        else:
+            init_db()
+            logger.info("Database initialized successfully via Base.metadata.create_all.")
     except Exception as exc:
-        logger.critical("Database initialization encountered an error at startup (service degraded): %s", exc)
+        logger.warning("Alembic migration encountered an issue (%s), falling back to init_db.", exc)
+        try:
+            init_db()
+            logger.info("Database initialized successfully.")
+        except Exception as db_exc:
+            logger.critical("Database initialization encountered an error at startup (service degraded): %s", db_exc)
 
     try:
         ml_service.load_artifacts()
@@ -221,11 +234,28 @@ def prediction(machine_id:str,db:Session=Depends(get_db),user:User=Depends(get_c
 @app.get("/api/machines/{machine_id}/anomalies")
 def anomalies(machine_id:str,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     machine_for(db,user,machine_id);rows=db.query(AnomalyEvent).filter(AnomalyEvent.machine_id==machine_id,AnomalyEvent.user_id==user.id).order_by(AnomalyEvent.timestamp.desc()).all();return {"anomalyEvents":[{"id":r.id,"machineId":r.machine_id,"timestamp":r.timestamp.isoformat(),"severity":r.severity,"score":r.score,"description":r.description,"affectedSensors":json.loads(r.affected_sensors)} for r in rows]}
-def maintenance_view(task:MaintenanceTask,machine:Machine)->dict[str,Any]:
-    return {"id":task.id,"machineId":machine.id,"machineName":machine.name,"priority":task.priority,"condition":task.description,"action":task.recommended_action or task.title,"status":task.status,"timeframe":"Immediate" if task.priority=="critical" else "Planned","createdAt":task.created_at.isoformat()}
+def maintenance_view(task: MaintenanceTask, machine: Optional[Machine]) -> dict[str, Any]:
+    m_id = machine.id if machine else task.machine_id
+    m_name = machine.name if machine else "Unknown / Retired"
+    return {
+        "id": task.id,
+        "machineId": m_id,
+        "machineName": m_name,
+        "priority": task.priority,
+        "condition": task.description,
+        "action": task.recommended_action or task.title,
+        "status": task.status,
+        "timeframe": "Immediate" if task.priority == "critical" else "Planned",
+        "createdAt": task.created_at.isoformat(),
+    }
 @app.get("/api/maintenance")
-def maintenance_records(db:Session=Depends(get_db),user:User=Depends(get_current_user)):
-    rows=db.query(MaintenanceTask).filter(MaintenanceTask.user_id==user.id).order_by(MaintenanceTask.created_at.desc()).all();return [maintenance_view(task,machine_for(db,user,task.machine_id)) for task in rows]
+def maintenance_records(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    rows = db.query(MaintenanceTask).filter(MaintenanceTask.user_id == user.id).order_by(MaintenanceTask.created_at.desc()).all()
+    res = []
+    for task in rows:
+        m = db.query(Machine).filter(Machine.id == task.machine_id, Machine.user_id == user.id).first()
+        res.append(maintenance_view(task, m))
+    return res
 @app.post("/api/maintenance",status_code=201)
 def create_maintenance(payload:dict,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     machine=machine_for(db,user,payload.get("machine_id") or "")
@@ -461,11 +491,11 @@ def copilot_context(db: Session, user: User, m: Machine | None, question: str = 
         "latest_anomalies": [a.description for a in an],
     }
 
-def diagnostic_view(d: DiagnosticCase, m: Machine) -> dict[str, Any]:
+def diagnostic_view(d: DiagnosticCase, m: Optional[Machine]) -> dict[str, Any]:
     return {
         "id": d.id,
-        "machineId": m.id,
-        "machineName": m.name,
+        "machineId": m.id if m else d.machine_id,
+        "machineName": m.name if m else "Retired Machine",
         "status": "open",
         "severity": d.severity,
         "trigger": d.trigger,
@@ -510,14 +540,19 @@ def create_diagnostic(payload: dict, db: Session = Depends(get_db), user: User =
 @app.get("/api/diagnostics")
 def diagnostics(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     rows = db.query(DiagnosticCase).filter(DiagnosticCase.user_id == user.id).order_by(DiagnosticCase.created_at.desc()).all()
-    return [diagnostic_view(d, machine_for(db, user, d.machine_id)) for d in rows]
+    res = []
+    for d in rows:
+        m = db.query(Machine).filter(Machine.id == d.machine_id, Machine.user_id == user.id).first()
+        res.append(diagnostic_view(d, m))
+    return res
 
 @app.get("/api/diagnostics/{diagnostic_id}")
 def diagnostic(diagnostic_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     d = db.query(DiagnosticCase).filter(DiagnosticCase.id == diagnostic_id, DiagnosticCase.user_id == user.id).first()
     if not d:
         raise HTTPException(404, "Diagnostic investigation not found.")
-    return diagnostic_view(d, machine_for(db, user, d.machine_id))
+    m = db.query(Machine).filter(Machine.id == d.machine_id, Machine.user_id == user.id).first()
+    return diagnostic_view(d, m)
 
 @app.post("/api/diagnostics/{diagnostic_id}/explain")
 def explain_diagnostic(diagnostic_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -553,8 +588,11 @@ def update_conversation(conversation_id: str, payload: dict, db: Session = Depen
     if "machine_id" in payload:
         mid = payload.get("machine_id")
         if mid:
-            machine_for(db, user, mid)
-            c.machine_id = mid
+            m_found = db.query(Machine).filter(Machine.id == mid, Machine.user_id == user.id).first()
+            if m_found:
+                c.machine_id = mid
+            else:
+                c.machine_id = None
         else:
             c.machine_id = None
     if "title" in payload and isinstance(payload["title"], str) and payload["title"].strip():
@@ -605,14 +643,21 @@ def send_message(conversation_id: str, payload: dict, db: Session = Depends(get_
     if "machine_id" in payload:
         mid = payload.get("machine_id")
         if mid:
-            machine_for(db, user, mid)
-            c.machine_id = mid
+            m_found = db.query(Machine).filter(Machine.id == mid, Machine.user_id == user.id).first()
+            if m_found:
+                c.machine_id = mid
+            else:
+                c.machine_id = None
         else:
             c.machine_id = None
 
     db.add(CopilotMessage(id=str(uuid.uuid4()), conversation_id=c.id, user_id=user.id, sender="user", content=question))
     
-    m = machine_for(db, user, c.machine_id) if c.machine_id else None
+    m = None
+    if c.machine_id:
+        m = db.query(Machine).filter(Machine.id == c.machine_id, Machine.user_id == user.id).first()
+        if not m:
+            c.machine_id = None
     context = copilot_context(db, user, m, question=question)
     answer = llm_service.generate_grounded_response(context, question)
     

@@ -16,15 +16,15 @@ class Settings:
     _cors_env: str = os.getenv("CORS_ORIGINS", "")
     @property
     def CORS_ORIGINS(self) -> List[str]:
-        raw = self._cors_env or os.getenv("CORS_ORIGIN", "")
+        raw = os.getenv("CORS_ORIGINS") or os.getenv("CORS_ORIGIN") or self._cors_env or ""
         if not raw:
-            return ["http://localhost:5173", "http://localhost:3000"] if self.DEBUG else ["https://machinasense.netlify.app"]
+            return ["http://localhost:5173", "http://localhost:3000"] if (self.ENVIRONMENT == "development") else ["https://machinasense.netlify.app"]
         origins = [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
         if self.ENVIRONMENT == "production":
             # Strict production CORS: reject wildcard '*'
             origins = [o for o in origins if o != "*"]
-            if not origins:
-                origins = ["https://machinasense.netlify.app"]
+            if "https://machinasense.netlify.app" not in origins:
+                origins.append("https://machinasense.netlify.app")
         elif "*" in origins and self.ENVIRONMENT == "development":
             return ["*"]
         return origins
@@ -33,15 +33,24 @@ class Settings:
     _db_url: str = os.getenv("DATABASE_URL", "")
     @property
     def DATABASE_URL(self) -> str:
-        url = self._db_url or os.getenv("DATABASE_URL", "")
+        url = (
+            self._db_url
+            or os.getenv("DATABASE_URL")
+            or os.getenv("DATABASE_INTERNAL_URL")
+            or os.getenv("INTERNAL_DATABASE_URL")
+            or os.getenv("POSTGRES_URL")
+            or ""
+        )
         if not url:
             if self.ENVIRONMENT == "production":
-                raise RuntimeError("DATABASE_URL must be configured in production. Ephemeral SQLite fallback is not permitted in production mode.")
+                raise RuntimeError("DATABASE_URL (or DATABASE_INTERNAL_URL) must be configured in production. Ephemeral SQLite fallback is not permitted in production mode.")
             # Fallback to local SQLite if DATABASE_URL is not set
             return "sqlite:///./machinasense.db"
-        # Fix Heroku/Supabase postgres:// scheme
+        # Fix Heroku/Supabase/Render postgres:// scheme
         if url.startswith("postgres://"):
-            return url.replace("postgres://", "postgresql://", 1)
+            url = url.replace("postgres://", "postgresql://", 1)
+        if self.ENVIRONMENT == "production" and url.startswith("sqlite"):
+            raise RuntimeError("Production requires a PostgreSQL database, but SQLite URL was provided.")
         return url
 
     # Clerk Authentication
@@ -69,9 +78,15 @@ def validate_configuration() -> List[str]:
     """Validates core configuration and returns issues or warnings without crashing."""
     issues: List[str] = []
     if settings.ENVIRONMENT == "production":
-        db_url = os.getenv("DATABASE_URL", "")
+        db_url = (
+            os.getenv("DATABASE_URL")
+            or os.getenv("DATABASE_INTERNAL_URL")
+            or os.getenv("INTERNAL_DATABASE_URL")
+            or os.getenv("POSTGRES_URL")
+            or ""
+        )
         if not db_url:
-            issues.append("DATABASE_URL is not set for production environment.")
+            issues.append("DATABASE_URL (or DATABASE_INTERNAL_URL) is not set for production environment.")
         elif db_url.startswith("sqlite"):
             issues.append("Production requires a PostgreSQL database, but SQLite URL was provided.")
         if not settings.CLERK_JWKS_URL:
