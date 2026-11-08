@@ -67,6 +67,8 @@ async def lifespan(_: FastAPI):
 
     os.makedirs(settings.DATASETS_DIR, exist_ok=True)
     os.makedirs(settings.MODELS_DIR, exist_ok=True)
+    import gc
+    gc.collect()
     yield
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)

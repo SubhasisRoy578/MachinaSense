@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-import torch
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -125,6 +124,7 @@ def explain_benchmark_model_global(benchmark_id: str) -> Dict[str, Any]:
         scaler = ml_service.scaler
         seq_len = ml_service.metadata.get("window_size", 30)
 
+        import torch
         # Baseline evaluation on scaled zero/mean sequence
         device = "cuda" if torch.cuda.is_available() else "cpu"
         baseline_seq = np.zeros((1, seq_len, len(feature_names)), dtype=np.float32)
@@ -450,6 +450,7 @@ def explain_user_model_global(db: Session, user: User, model_id: str) -> Dict[st
 
     # 4. PyTorch LSTM Model
     elif bundle.get("model_architecture") == "pytorch_lstm":
+        import torch
         lstm_net = entry["lstm_net"]
         preprocessor = bundle["preprocessor"]
         base_df = pd.DataFrame([{col: 0.0 for col in feature_cols}])
@@ -711,6 +712,7 @@ def explain_prediction_local(
 
     if task == "rul_regression":
         if bundle.get("model_architecture") == "pytorch_lstm":
+            import torch
             lstm_net = entry["lstm_net"]
             with torch.no_grad():
                 X_tensor = torch.tensor(X_proc, dtype=torch.float32).unsqueeze(1)

@@ -3,7 +3,6 @@ import sys
 import json
 import math
 import joblib
-import torch
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Any, Optional
@@ -16,8 +15,7 @@ if BASE_DIR not in sys.path:
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from ml.models.lstm import RULLSTM, load_lstm_model
-from ml.data.loader import load_cmapss_data, FEATURE_COLS, MAX_RUL, COLUMNS
+from ml.data.loader import FEATURE_COLS, MAX_RUL, COLUMNS
 
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
 DATA_DIR = os.path.join(BASE_DIR, "ml", "data", "raw")
@@ -66,22 +64,110 @@ SENSOR_NAMES_MAP = {
 
 class MLService:
     def __init__(self):
-        self.scaler = None
-        self.rf_baseline = None
-        self.lstm_model = None
-        self.anomaly_detector = None
+        self._scaler = None
+        self._rf_baseline = None
+        self._lstm_model = None
+        self._anomaly_detector = None
+        self._rf_colab_model = None
         self.metadata: Dict[str, Any] = {}
         self.evaluation: Dict[str, Any] = {}
         self.is_loaded = False
-        self.rf_colab_model = None
         self.rf_colab_metadata: Dict[str, Any] = {}
         self.rf_colab_evaluation: Dict[str, Any] = {}
         self.is_colab_loaded: bool = False
         
-        self.test_df: Optional[pd.DataFrame] = None
+        self._test_df: Optional[pd.DataFrame] = None
         self.train_df: Optional[pd.DataFrame] = None
         self.true_rul_df: Optional[pd.DataFrame] = None
-        self.scaled_test_df: Optional[np.ndarray] = None
+        self._scaled_test_df: Optional[np.ndarray] = None
+
+    @property
+    def scaler(self):
+        if self._scaler is None:
+            scaler_path = os.path.join(ARTIFACTS_DIR, "preprocessing", "scaler.joblib")
+            if os.path.exists(scaler_path):
+                self._scaler = joblib.load(scaler_path)
+        return self._scaler
+
+    @scaler.setter
+    def scaler(self, value):
+        self._scaler = value
+
+    @property
+    def rf_baseline(self):
+        if self._rf_baseline is None:
+            rf_path = os.path.join(ARTIFACTS_DIR, "rul", "rf_baseline.joblib")
+            if os.path.exists(rf_path):
+                self._rf_baseline = joblib.load(rf_path)
+        return self._rf_baseline
+
+    @rf_baseline.setter
+    def rf_baseline(self, value):
+        self._rf_baseline = value
+
+    @property
+    def lstm_model(self):
+        if self._lstm_model is None:
+            lstm_path = os.path.join(ARTIFACTS_DIR, "rul", "lstm_model.pth")
+            if os.path.exists(lstm_path):
+                import torch
+                from ml.models.lstm import RULLSTM, load_lstm_model
+                device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                model = RULLSTM(input_size=len(FEATURE_COLS), hidden_size=64, num_layers=2).to(device)
+                self._lstm_model = load_lstm_model(model, lstm_path, device=device)
+        return self._lstm_model
+
+    @lstm_model.setter
+    def lstm_model(self, value):
+        self._lstm_model = value
+
+    @property
+    def anomaly_detector(self):
+        if self._anomaly_detector is None:
+            anomaly_path = os.path.join(ARTIFACTS_DIR, "anomaly", "isolation_forest.joblib")
+            if os.path.exists(anomaly_path):
+                self._anomaly_detector = joblib.load(anomaly_path)
+        return self._anomaly_detector
+
+    @anomaly_detector.setter
+    def anomaly_detector(self, value):
+        self._anomaly_detector = value
+
+    @property
+    def rf_colab_model(self):
+        if self._rf_colab_model is None:
+            colab_rf_path = os.path.join(COLAB_ARTIFACTS_DIR, "rf_baseline.joblib")
+            if os.path.exists(colab_rf_path):
+                self._rf_colab_model = joblib.load(colab_rf_path)
+        return self._rf_colab_model
+
+    @rf_colab_model.setter
+    def rf_colab_model(self, value):
+        self._rf_colab_model = value
+
+    @property
+    def test_df(self) -> Optional[pd.DataFrame]:
+        if self._test_df is None and os.path.exists(DATA_DIR):
+            try:
+                from ml.data.loader import load_cmapss_data
+                _, self._test_df, self.true_rul_df = load_cmapss_data(DATA_DIR, "FD001")
+            except Exception as dataset_err:
+                print(f"Warning loading CMAPSS test dataset: {dataset_err}")
+        return self._test_df
+
+    @test_df.setter
+    def test_df(self, value: Optional[pd.DataFrame]):
+        self._test_df = value
+
+    @property
+    def scaled_test_df(self) -> Optional[np.ndarray]:
+        if self._scaled_test_df is None and self.test_df is not None and self.scaler is not None:
+            self._scaled_test_df = self.scaler.transform(self.test_df[FEATURE_COLS])
+        return self._scaled_test_df
+
+    @scaled_test_df.setter
+    def scaled_test_df(self, value: Optional[np.ndarray]):
+        self._scaled_test_df = value
 
     def load_artifacts(self):
         try:
@@ -98,15 +184,6 @@ class MLService:
                 self.is_loaded = False
                 return False
 
-            self.scaler = joblib.load(scaler_path)
-            self.rf_baseline = joblib.load(rf_path)
-            
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
-            self.lstm_model = RULLSTM(input_size=len(FEATURE_COLS), hidden_size=64, num_layers=2).to(device)
-            self.lstm_model = load_lstm_model(self.lstm_model, lstm_path, device=device)
-            
-            self.anomaly_detector = joblib.load(anomaly_path)
-            
             if os.path.exists(meta_path):
                 with open(meta_path, "r") as f:
                     self.metadata = json.load(f)
@@ -114,40 +191,25 @@ class MLService:
             if os.path.exists(eval_path):
                 with open(eval_path, "r") as f:
                     self.evaluation = json.load(f)
-                    
-            # Load dataset for querying machine endpoints
-            if os.path.exists(DATA_DIR):
-                try:
-                    self.train_df, self.test_df, self.true_rul_df = load_cmapss_data(DATA_DIR, "FD001")
-                    self.scaled_test_df = self.scaler.transform(self.test_df[FEATURE_COLS])
-                except Exception as dataset_err:
-                    print(f"Warning loading CMAPSS raw dataset: {dataset_err}")
 
-            # Dedicated Colab FD001 model loading
-            try:
-                colab_rf_path = os.path.join(COLAB_ARTIFACTS_DIR, "rf_baseline.joblib")
-                colab_meta_path = os.path.join(COLAB_ARTIFACTS_DIR, "model_metadata.json")
-                colab_eval_path = os.path.join(COLAB_ARTIFACTS_DIR, "evaluation.json")
-                if os.path.exists(colab_rf_path):
-                    self.rf_colab_model = joblib.load(colab_rf_path)
-                    if os.path.exists(colab_meta_path):
-                        with open(colab_meta_path, "r", encoding="utf-8") as f:
-                            self.rf_colab_metadata = json.load(f)
-                    if os.path.exists(colab_eval_path):
-                        with open(colab_eval_path, "r", encoding="utf-8") as f:
-                            self.rf_colab_evaluation = json.load(f)
-                    self.is_colab_loaded = True
-                    print("MLService: Colab FD001 Random Forest model loaded successfully.")
-                else:
-                    print("MLService: Colab FD001 model artifact not found, skipping.")
-                    self.is_colab_loaded = False
-            except Exception as colab_err:
-                print(f"MLService: Error loading Colab FD001 model: {colab_err}")
-                self.rf_colab_model = None
+            # Dedicated Colab FD001 metadata and evaluation (lightweight JSONs)
+            colab_rf_path = os.path.join(COLAB_ARTIFACTS_DIR, "rf_baseline.joblib")
+            colab_meta_path = os.path.join(COLAB_ARTIFACTS_DIR, "model_metadata.json")
+            colab_eval_path = os.path.join(COLAB_ARTIFACTS_DIR, "evaluation.json")
+            if os.path.exists(colab_rf_path):
+                if os.path.exists(colab_meta_path):
+                    with open(colab_meta_path, "r", encoding="utf-8") as f:
+                        self.rf_colab_metadata = json.load(f)
+                if os.path.exists(colab_eval_path):
+                    with open(colab_eval_path, "r", encoding="utf-8") as f:
+                        self.rf_colab_evaluation = json.load(f)
+                self.is_colab_loaded = True
+                print("MLService: Colab FD001 Random Forest model metadata verified.")
+            else:
                 self.is_colab_loaded = False
 
             self.is_loaded = True
-            print("MLService successfully initialized and all artifacts loaded.")
+            print("MLService successfully initialized (lazy loading enabled).")
             return True
         except Exception as e:
             print(f"Error loading ML artifacts in MLService: {e}")
@@ -230,6 +292,7 @@ class MLService:
         seq_len = self.metadata.get("window_size", 30)
 
         if use_lstm and len(scaled_df) >= seq_len:
+            import torch
             seq = scaled_df.iloc[-seq_len:].values
             seq = np.expand_dims(seq, axis=0)
             device = 'cuda' if torch.cuda.is_available() else 'cpu'

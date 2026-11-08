@@ -3,7 +3,7 @@ uvicorn
 pydantic
 numpy
 pandas
-scikit-learn==1.9.1
+scikit-learn==1.6.1
 joblib
 torch
 pytest
@@ -17,3 +17,5 @@ psycopg2-binary
 pyjwt[crypto]
 cryptography
 alembic
+python-dotenv
+psycopg[binary]>=3.2,<4

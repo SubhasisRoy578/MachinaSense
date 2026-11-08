@@ -42,10 +42,6 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-
 from app.config import settings
 from app.db.models import TrainingJobRecord, UserDataset
 from app.db.session import SessionLocal
@@ -72,16 +68,29 @@ _cancelled_jobs: Set[str] = set()
 _lock = threading.Lock()
 
 
-class PyTorchLSTMRUL(nn.Module):
-    """PyTorch LSTM for sequential temporal RUL estimation."""
-    def __init__(self, input_dim: int, hidden_dim: int = 32, num_layers: int = 1):
-        super().__init__()
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_dim, 1)
+def _get_pytorch_lstm_class():
+    import torch.nn as nn
+    class _RealPyTorchLSTMRUL(nn.Module):
+        """PyTorch LSTM for sequential temporal RUL estimation."""
+        def __init__(self, input_dim: int, hidden_dim: int = 32, num_layers: int = 1):
+            super().__init__()
+            self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, batch_first=True)
+            self.fc = nn.Linear(hidden_dim, 1)
 
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        return self.fc(out[:, -1, :])
+        def forward(self, x):
+            out, _ = self.lstm(x)
+            return self.fc(out[:, -1, :])
+    return _RealPyTorchLSTMRUL
+
+
+class PyTorchLSTMRUL:
+    """Lazy wrapper for PyTorchLSTMRUL to avoid importing torch at startup."""
+    _impl = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._impl is None:
+            cls._impl = _get_pytorch_lstm_class()
+        return cls._impl(*args, **kwargs)
 
 
 def request_cancel_job(job_id: str) -> None:
@@ -345,6 +354,9 @@ def run_training_pipeline(job_id: str, user_id: str) -> None:
                 trained_model = gb
             elif model_type == "lstm_regressor":
                 # PyTorch LSTM
+                import torch
+                import torch.nn as nn
+                import torch.optim as optim
                 torch.manual_seed(seed)
                 input_dim = X_train_val_proc.shape[1]
                 lstm_net = PyTorchLSTMRUL(input_dim=input_dim, hidden_dim=32, num_layers=1)
@@ -397,6 +409,7 @@ def run_training_pipeline(job_id: str, user_id: str) -> None:
 
         if task == "rul_regression":
             if model_type == "lstm_regressor":
+                import torch
                 with torch.no_grad():
                     X_test_tensor = torch.tensor(X_test_proc, dtype=torch.float32).unsqueeze(1)
                     y_pred = trained_model(X_test_tensor).squeeze(1).numpy()

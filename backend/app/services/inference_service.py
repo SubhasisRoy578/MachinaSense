@@ -20,19 +20,19 @@ from typing import Any, Dict, List, Optional, Tuple
 import joblib
 import numpy as np
 import pandas as pd
-import torch
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.models import ModelPredictionRecord, ModelRegistryRecord, User
-from app.services.training_engine import PyTorchLSTMRUL
 
 logger = logging.getLogger("machinasense.inference")
 
 SUPPORTED_TASKS = {"rul_regression", "condition_classification", "anomaly_detection"}
 
 # In-process cache: key = (model_id, version, user_id) -> (bundle, optional_lstm_net)
+# Bound cache to 2 models to operate safely within 512 MB RAM
+MAX_CACHED_MODELS = 2
 _model_cache: Dict[Tuple[str, int, str], Dict[str, Any]] = {}
 _cache_lock = threading.Lock()
 
@@ -43,6 +43,11 @@ def get_cached_or_load_artifact(model: ModelRegistryRecord, user_id: str) -> Dic
     with _cache_lock:
         if cache_key in _model_cache:
             return _model_cache[cache_key]
+        if len(_model_cache) >= MAX_CACHED_MODELS:
+            oldest_key = next(iter(_model_cache))
+            del _model_cache[oldest_key]
+            import gc
+            gc.collect()
 
     # Verify path safety
     artifact_path = model.artifact_path
@@ -79,6 +84,8 @@ def get_cached_or_load_artifact(model: ModelRegistryRecord, user_id: str) -> Dic
 
     lstm_net = None
     if bundle.get("model_architecture") == "pytorch_lstm":
+        import torch
+        from app.services.training_engine import PyTorchLSTMRUL
         state_dict = bundle["model"]
         # Determine input dimension from saved weights
         input_dim = state_dict["lstm.weight_ih_l0"].shape[1]
@@ -228,6 +235,7 @@ def execute_rul_inference(
     X_proc = transform_features(preprocessor, df)
 
     if bundle.get("model_architecture") == "pytorch_lstm":
+        import torch
         lstm_net = entry["lstm_net"]
         with torch.no_grad():
             X_tensor = torch.tensor(X_proc, dtype=torch.float32).unsqueeze(1)
@@ -419,6 +427,7 @@ def execute_batch_inference(
 
     if task == "rul_regression":
         if bundle.get("model_architecture") == "pytorch_lstm":
+            import torch
             lstm_net = entry["lstm_net"]
             with torch.no_grad():
                 X_tensor = torch.tensor(X_proc, dtype=torch.float32).unsqueeze(1)
