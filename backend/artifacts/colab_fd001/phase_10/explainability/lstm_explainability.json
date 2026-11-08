@@ -1,0 +1,581 @@
+{
+  "model_name": "LSTM Neural Network RUL Predictor",
+  "architecture": "2-Layer Recurrent LSTM (hidden_size=64, input_size=15, window=30)",
+  "explanation_methods": [
+    "Input Gradient Saliency (first-order Taylor approximation |dY/dX|)",
+    "Input x Gradient Attribution (|X * dY/dX|)",
+    "Sensor-wise Temporal Sensitivity Breakdown"
+  ],
+  "sensor_importance_ranking": [
+    {
+      "sensor": "s9",
+      "gradient_saliency": 8.171099662780762,
+      "input_x_gradient": 1.37139522456989,
+      "importance_percentage": 11.979804039001465,
+      "rank": 1
+    },
+    {
+      "sensor": "s11",
+      "gradient_saliency": 6.589098930358887,
+      "input_x_gradient": 2.549717023165046,
+      "importance_percentage": 9.660402297973633,
+      "rank": 2
+    },
+    {
+      "sensor": "s8",
+      "gradient_saliency": 6.121362209320068,
+      "input_x_gradient": 1.8205557574759517,
+      "importance_percentage": 8.974645614624023,
+      "rank": 3
+    },
+    {
+      "sensor": "s14",
+      "gradient_saliency": 6.09833288192749,
+      "input_x_gradient": 1.2179534759598585,
+      "importance_percentage": 8.940881729125977,
+      "rank": 4
+    },
+    {
+      "sensor": "s13",
+      "gradient_saliency": 5.930628299713135,
+      "input_x_gradient": 1.8599887871954792,
+      "importance_percentage": 8.695006370544434,
+      "rank": 5
+    },
+    {
+      "sensor": "s4",
+      "gradient_saliency": 4.94511079788208,
+      "input_x_gradient": 2.0956906267774698,
+      "importance_percentage": 7.250120639801025,
+      "rank": 6
+    },
+    {
+      "sensor": "s12",
+      "gradient_saliency": 4.9051008224487305,
+      "input_x_gradient": 2.913874704239023,
+      "importance_percentage": 7.191461563110352,
+      "rank": 7
+    },
+    {
+      "sensor": "s7",
+      "gradient_saliency": 4.64877462387085,
+      "input_x_gradient": 2.697301627160766,
+      "importance_percentage": 6.8156561851501465,
+      "rank": 8
+    },
+    {
+      "sensor": "s15",
+      "gradient_saliency": 4.296616554260254,
+      "input_x_gradient": 1.8405129380291083,
+      "importance_percentage": 6.299351215362549,
+      "rank": 9
+    },
+    {
+      "sensor": "s2",
+      "gradient_saliency": 4.1574907302856445,
+      "input_x_gradient": 1.7290530783484237,
+      "importance_percentage": 6.095376014709473,
+      "rank": 10
+    },
+    {
+      "sensor": "s20",
+      "gradient_saliency": 3.8073036670684814,
+      "input_x_gradient": 2.073766740308775,
+      "importance_percentage": 5.581960201263428,
+      "rank": 11
+    },
+    {
+      "sensor": "s17",
+      "gradient_saliency": 3.110565185546875,
+      "input_x_gradient": 1.2779289227692292,
+      "importance_percentage": 4.560458660125732,
+      "rank": 12
+    },
+    {
+      "sensor": "s21",
+      "gradient_saliency": 2.7513630390167236,
+      "input_x_gradient": 1.5691776012509955,
+      "importance_percentage": 4.033825397491455,
+      "rank": 13
+    },
+    {
+      "sensor": "s3",
+      "gradient_saliency": 2.4763622283935547,
+      "input_x_gradient": 0.9813043604207096,
+      "importance_percentage": 3.630641460418701,
+      "rank": 14
+    },
+    {
+      "sensor": "s6",
+      "gradient_saliency": 0.19808019697666168,
+      "input_x_gradient": 0.19646264530161534,
+      "importance_percentage": 0.290409117937088,
+      "rank": 15
+    }
+  ],
+  "temporal_importance_ranking": [
+    {
+      "time_step_index": 1,
+      "relative_cycle": "T-29",
+      "gradient_saliency": 5.649041175842285,
+      "input_x_gradient": 2.2328832371973153,
+      "importance_percentage": 4.141083717346191
+    },
+    {
+      "time_step_index": 2,
+      "relative_cycle": "T-28",
+      "gradient_saliency": 6.646873474121094,
+      "input_x_gradient": 2.5763604444058243,
+      "importance_percentage": 4.872554302215576
+    },
+    {
+      "time_step_index": 3,
+      "relative_cycle": "T-27",
+      "gradient_saliency": 6.37837028503418,
+      "input_x_gradient": 2.4342835277608335,
+      "importance_percentage": 4.675724983215332
+    },
+    {
+      "time_step_index": 4,
+      "relative_cycle": "T-26",
+      "gradient_saliency": 5.860957145690918,
+      "input_x_gradient": 2.1952816153285695,
+      "importance_percentage": 4.296430587768555
+    },
+    {
+      "time_step_index": 5,
+      "relative_cycle": "T-25",
+      "gradient_saliency": 5.47686767578125,
+      "input_x_gradient": 2.042534073930343,
+      "importance_percentage": 4.0148701667785645
+    },
+    {
+      "time_step_index": 6,
+      "relative_cycle": "T-24",
+      "gradient_saliency": 5.143336772918701,
+      "input_x_gradient": 1.9314525569977286,
+      "importance_percentage": 3.7703723907470703
+    },
+    {
+      "time_step_index": 7,
+      "relative_cycle": "T-23",
+      "gradient_saliency": 4.812398910522461,
+      "input_x_gradient": 1.8111214459719995,
+      "importance_percentage": 3.5277750492095947
+    },
+    {
+      "time_step_index": 8,
+      "relative_cycle": "T-22",
+      "gradient_saliency": 4.438140392303467,
+      "input_x_gradient": 1.6778583141772967,
+      "importance_percentage": 3.2534213066101074
+    },
+    {
+      "time_step_index": 9,
+      "relative_cycle": "T-21",
+      "gradient_saliency": 4.016067028045654,
+      "input_x_gradient": 1.5161814767475028,
+      "importance_percentage": 2.944016218185425
+    },
+    {
+      "time_step_index": 10,
+      "relative_cycle": "T-20",
+      "gradient_saliency": 3.527480125427246,
+      "input_x_gradient": 1.3392350766731822,
+      "importance_percentage": 2.585852861404419
+    },
+    {
+      "time_step_index": 11,
+      "relative_cycle": "T-19",
+      "gradient_saliency": 2.9871582984924316,
+      "input_x_gradient": 1.1430294700800314,
+      "importance_percentage": 2.189764976501465
+    },
+    {
+      "time_step_index": 12,
+      "relative_cycle": "T-18",
+      "gradient_saliency": 2.395815372467041,
+      "input_x_gradient": 0.9151107808467205,
+      "importance_percentage": 1.7562752962112427
+    },
+    {
+      "time_step_index": 13,
+      "relative_cycle": "T-17",
+      "gradient_saliency": 1.750264286994934,
+      "input_x_gradient": 0.6790240599725023,
+      "importance_percentage": 1.2830479145050049
+    },
+    {
+      "time_step_index": 14,
+      "relative_cycle": "T-16",
+      "gradient_saliency": 1.15396249294281,
+      "input_x_gradient": 0.4566156684330553,
+      "importance_percentage": 0.8459231853485107
+    },
+    {
+      "time_step_index": 15,
+      "relative_cycle": "T-15",
+      "gradient_saliency": 0.817878246307373,
+      "input_x_gradient": 0.31825780776591966,
+      "importance_percentage": 0.5995534658432007
+    },
+    {
+      "time_step_index": 16,
+      "relative_cycle": "T-14",
+      "gradient_saliency": 0.8839288949966431,
+      "input_x_gradient": 0.33340735206207206,
+      "importance_percentage": 0.6479725241661072
+    },
+    {
+      "time_step_index": 17,
+      "relative_cycle": "T-13",
+      "gradient_saliency": 1.2582050561904907,
+      "input_x_gradient": 0.47626542680427847,
+      "importance_percentage": 0.9223392009735107
+    },
+    {
+      "time_step_index": 18,
+      "relative_cycle": "T-12",
+      "gradient_saliency": 1.8677654266357422,
+      "input_x_gradient": 0.7014047745182191,
+      "importance_percentage": 1.3691833019256592
+    },
+    {
+      "time_step_index": 19,
+      "relative_cycle": "T-11",
+      "gradient_saliency": 2.5694680213928223,
+      "input_x_gradient": 0.9702476303516687,
+      "importance_percentage": 1.883573055267334
+    },
+    {
+      "time_step_index": 20,
+      "relative_cycle": "T-10",
+      "gradient_saliency": 3.2987523078918457,
+      "input_x_gradient": 1.258513851404874,
+      "importance_percentage": 2.418181896209717
+    },
+    {
+      "time_step_index": 21,
+      "relative_cycle": "T-9",
+      "gradient_saliency": 4.0384202003479,
+      "input_x_gradient": 1.5385433307468435,
+      "importance_percentage": 2.960402488708496
+    },
+    {
+      "time_step_index": 22,
+      "relative_cycle": "T-8",
+      "gradient_saliency": 4.793590545654297,
+      "input_x_gradient": 1.834611258333326,
+      "importance_percentage": 3.5139873027801514
+    },
+    {
+      "time_step_index": 23,
+      "relative_cycle": "T-7",
+      "gradient_saliency": 5.612236499786377,
+      "input_x_gradient": 2.1397937121944977,
+      "importance_percentage": 4.1141037940979
+    },
+    {
+      "time_step_index": 24,
+      "relative_cycle": "T-6",
+      "gradient_saliency": 6.340241432189941,
+      "input_x_gradient": 2.4543559296818853,
+      "importance_percentage": 4.647774696350098
+    },
+    {
+      "time_step_index": 25,
+      "relative_cycle": "T-5",
+      "gradient_saliency": 7.099188327789307,
+      "input_x_gradient": 2.725910421846368,
+      "importance_percentage": 5.204127788543701
+    },
+    {
+      "time_step_index": 26,
+      "relative_cycle": "T-4",
+      "gradient_saliency": 7.7772674560546875,
+      "input_x_gradient": 2.996644009917967,
+      "importance_percentage": 5.701200485229492
+    },
+    {
+      "time_step_index": 27,
+      "relative_cycle": "T-3",
+      "gradient_saliency": 8.295969009399414,
+      "input_x_gradient": 3.230082077696609,
+      "importance_percentage": 6.081439018249512
+    },
+    {
+      "time_step_index": 28,
+      "relative_cycle": "T-2",
+      "gradient_saliency": 8.48661994934082,
+      "input_x_gradient": 3.3098741409110293,
+      "importance_percentage": 6.221198081970215
+    },
+    {
+      "time_step_index": 29,
+      "relative_cycle": "T-1",
+      "gradient_saliency": 7.820777416229248,
+      "input_x_gradient": 3.074415566029778,
+      "importance_percentage": 5.733095645904541
+    },
+    {
+      "time_step_index": 30,
+      "relative_cycle": "T (Current)",
+      "gradient_saliency": 5.21752405166626,
+      "input_x_gradient": 2.076067987156466,
+      "importance_percentage": 3.824755907058716
+    }
+  ],
+  "sample_engine_explanations": [
+    {
+      "engine_id": 1,
+      "actual_rul": 112.0,
+      "predicted_rul": 110.2,
+      "residual": -1.8,
+      "top_contributing_sensors": [
+        {
+          "sensor": "s9",
+          "attribution": 10.61449
+        },
+        {
+          "sensor": "s14",
+          "attribution": 8.42536
+        },
+        {
+          "sensor": "s11",
+          "attribution": 7.71176
+        },
+        {
+          "sensor": "s13",
+          "attribution": 6.92796
+        },
+        {
+          "sensor": "s8",
+          "attribution": 6.69141
+        }
+      ],
+      "top_influential_time_steps": [
+        {
+          "time_step": "T-2",
+          "attribution": 11.23618
+        },
+        {
+          "time_step": "T-3",
+          "attribution": 11.15795
+        },
+        {
+          "time_step": "T-4",
+          "attribution": 10.60678
+        },
+        {
+          "time_step": "T-1",
+          "attribution": 9.87708
+        },
+        {
+          "time_step": "T-5",
+          "attribution": 9.75912
+        }
+      ]
+    },
+    {
+      "engine_id": 34,
+      "actual_rul": 7.0,
+      "predicted_rul": 6.2,
+      "residual": -0.8,
+      "top_contributing_sensors": [
+        {
+          "sensor": "s8",
+          "attribution": 1.52842
+        },
+        {
+          "sensor": "s13",
+          "attribution": 1.33331
+        },
+        {
+          "sensor": "s11",
+          "attribution": 1.30524
+        },
+        {
+          "sensor": "s9",
+          "attribution": 1.25445
+        },
+        {
+          "sensor": "s12",
+          "attribution": 1.17512
+        }
+      ],
+      "top_influential_time_steps": [
+        {
+          "time_step": "T-28",
+          "attribution": 1.80659
+        },
+        {
+          "time_step": "T-27",
+          "attribution": 1.65342
+        },
+        {
+          "time_step": "T-29",
+          "attribution": 1.63967
+        },
+        {
+          "time_step": "T-26",
+          "attribution": 1.31845
+        },
+        {
+          "time_step": "T-1",
+          "attribution": 1.27984
+        }
+      ]
+    },
+    {
+      "engine_id": 45,
+      "actual_rul": 114.0,
+      "predicted_rul": 90.24,
+      "residual": -23.76,
+      "top_contributing_sensors": [
+        {
+          "sensor": "s9",
+          "attribution": 13.69957
+        },
+        {
+          "sensor": "s11",
+          "attribution": 11.08107
+        },
+        {
+          "sensor": "s8",
+          "attribution": 10.77272
+        },
+        {
+          "sensor": "s13",
+          "attribution": 10.03786
+        },
+        {
+          "sensor": "s14",
+          "attribution": 9.99963
+        }
+      ],
+      "top_influential_time_steps": [
+        {
+          "time_step": "T-1",
+          "attribution": 15.25401
+        },
+        {
+          "time_step": "T-2",
+          "attribution": 15.05837
+        },
+        {
+          "time_step": "T-3",
+          "attribution": 14.88171
+        },
+        {
+          "time_step": "T-4",
+          "attribution": 14.03167
+        },
+        {
+          "time_step": "T-5",
+          "attribution": 13.415
+        }
+      ]
+    },
+    {
+      "engine_id": 77,
+      "actual_rul": 34.0,
+      "predicted_rul": 33.15,
+      "residual": -0.85,
+      "top_contributing_sensors": [
+        {
+          "sensor": "s9",
+          "attribution": 6.0338
+        },
+        {
+          "sensor": "s8",
+          "attribution": 5.5913
+        },
+        {
+          "sensor": "s11",
+          "attribution": 5.39659
+        },
+        {
+          "sensor": "s13",
+          "attribution": 5.00287
+        },
+        {
+          "sensor": "s12",
+          "attribution": 4.34127
+        }
+      ],
+      "top_influential_time_steps": [
+        {
+          "time_step": "T-3",
+          "attribution": 7.52962
+        },
+        {
+          "time_step": "T-1",
+          "attribution": 7.06883
+        },
+        {
+          "time_step": "T-2",
+          "attribution": 6.89558
+        },
+        {
+          "time_step": "T-4",
+          "attribution": 6.71455
+        },
+        {
+          "time_step": "T-5",
+          "attribution": 5.81503
+        }
+      ]
+    },
+    {
+      "engine_id": 82,
+      "actual_rul": 9.0,
+      "predicted_rul": 8.91,
+      "residual": -0.09,
+      "top_contributing_sensors": [
+        {
+          "sensor": "s8",
+          "attribution": 1.18023
+        },
+        {
+          "sensor": "s13",
+          "attribution": 1.03041
+        },
+        {
+          "sensor": "s11",
+          "attribution": 1.01808
+        },
+        {
+          "sensor": "s9",
+          "attribution": 0.98655
+        },
+        {
+          "sensor": "s12",
+          "attribution": 0.91102
+        }
+      ],
+      "top_influential_time_steps": [
+        {
+          "time_step": "T-1",
+          "attribution": 1.38319
+        },
+        {
+          "time_step": "T-2",
+          "attribution": 1.23356
+        },
+        {
+          "time_step": "T-4",
+          "attribution": 1.22166
+        },
+        {
+          "time_step": "T-28",
+          "attribution": 1.20908
+        },
+        {
+          "time_step": "T-3",
+          "attribution": 1.18
+        }
+      ]
+    }
+  ],
+  "methodology_limitations": "Gradient saliency measures local first-order sensitivity around the input point. It does not assume or require attention layers. Highly non-linear interactions across saturated gates may not be completely captured by first-order derivatives alone."
+}

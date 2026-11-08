@@ -1,0 +1,89 @@
+{
+  "benchmark_summary": [
+    {
+      "model_name": "Random Forest (Colab FD001, 19 Features)",
+      "target_type": "Capped (<=125)",
+      "MAE": 12.2143,
+      "RMSE": 16.5587,
+      "R2": 0.8293,
+      "median_absolute_error": 9.1123,
+      "maximum_absolute_error": 45.1924,
+      "mean_bias": 0.6216,
+      "NASA_asymmetric_score": 465.3291,
+      "overpredicted_count": 55,
+      "underpredicted_count": 45,
+      "exact_count": 0
+    },
+    {
+      "model_name": "LSTM Neural Network (30-Cycle Window, 15 Features)",
+      "target_type": "Capped (<=125)",
+      "MAE": 10.2305,
+      "RMSE": 13.6405,
+      "R2": 0.8841,
+      "median_absolute_error": 8.4796,
+      "maximum_absolute_error": 42.5092,
+      "mean_bias": 3.6184,
+      "NASA_asymmetric_score": 358.211,
+      "overpredicted_count": 61,
+      "underpredicted_count": 39,
+      "exact_count": 0
+    },
+    {
+      "model_name": "Random Forest Benchmark (Original 15 Scaled Features)",
+      "target_type": "Capped (<=125)",
+      "MAE": 12.1502,
+      "RMSE": 17.1521,
+      "R2": 0.8168,
+      "median_absolute_error": 7.9654,
+      "maximum_absolute_error": 51.4607,
+      "mean_bias": 4.2746,
+      "NASA_asymmetric_score": 892.3693,
+      "overpredicted_count": 58,
+      "underpredicted_count": 42,
+      "exact_count": 0
+    },
+    {
+      "model_name": "Random Forest (Colab FD001, 19 Features)",
+      "target_type": "Uncapped (Raw Ground Truth)",
+      "MAE": 13.2843,
+      "RMSE": 17.7557,
+      "R2": 0.8174,
+      "median_absolute_error": 10.1678,
+      "maximum_absolute_error": 45.1924,
+      "mean_bias": -0.4484,
+      "NASA_asymmetric_score": 511.3163,
+      "overpredicted_count": 55,
+      "underpredicted_count": 45,
+      "exact_count": 0
+    },
+    {
+      "model_name": "LSTM Neural Network (30-Cycle Window, 15 Features)",
+      "target_type": "Uncapped (Raw Ground Truth)",
+      "MAE": 11.3005,
+      "RMSE": 15.0027,
+      "R2": 0.8697,
+      "median_absolute_error": 9.1577,
+      "maximum_absolute_error": 42.5092,
+      "mean_bias": 2.5484,
+      "NASA_asymmetric_score": 401.052,
+      "overpredicted_count": 61,
+      "underpredicted_count": 39,
+      "exact_count": 0
+    },
+    {
+      "model_name": "Random Forest Benchmark (Original 15 Scaled Features)",
+      "target_type": "Uncapped (Raw Ground Truth)",
+      "MAE": 13.2202,
+      "RMSE": 18.103,
+      "R2": 0.8102,
+      "median_absolute_error": 9.7163,
+      "maximum_absolute_error": 51.4607,
+      "mean_bias": 3.2046,
+      "NASA_asymmetric_score": 923.1043,
+      "overpredicted_count": 58,
+      "underpredicted_count": 42,
+      "exact_count": 0
+    }
+  ],
+  "isolation_forest_note": "Isolation Forest was intentionally excluded from RUL regression benchmarking. Isolation Forest operates as an unsupervised anomaly detection classifier producing binary status and continuous anomaly severity scores [0, 1], not a cycle-based remaining useful life estimate."
+}

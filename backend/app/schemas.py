@@ -22,6 +22,22 @@ class PredictRULResponse(BaseModel):
     model_used: str
     confidence_interval: Dict[str, float]
 
+class PredictRULFD001Request(BaseModel):
+    features: Dict[str, Any] = Field(
+        ...,
+        description="Dictionary containing all 19 named features: cycle, op_setting_1..3, sensor_2..21"
+    )
+
+class PredictRULFD001Response(BaseModel):
+    predicted_rul: float
+    model_name: str
+    algorithm: str
+    dataset: str
+    target: str
+    rul_cap: float
+    evaluation: Dict[str, Any]
+    features_used: List[str]
+
 class DetectAnomalyRequest(BaseModel):
     features: List[float] = Field(..., description="Array of 15 sensor readings")
 

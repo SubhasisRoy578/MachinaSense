@@ -1,0 +1,5 @@
+noise_level,noise_fraction,rf_mean_delta_rul,rf_max_delta_rul,rf_stability_pct,rf_noisy_mae,rf_noisy_rmse,lstm_mean_delta_rul,lstm_max_delta_rul,lstm_stability_pct,lstm_noisy_mae,lstm_noisy_rmse
+1%,0.01,0.3598,1.9553,100.0,12.2055,16.5718,0.1163,0.7074,100.0,10.2025,13.6157
+3%,0.03,0.6203,4.0421,100.0,12.3056,16.6361,0.2676,1.2361,100.0,10.2439,13.6413
+5%,0.05,0.9316,5.4219,99.0,12.0634,16.3809,0.6098,3.5537,100.0,10.4676,13.9122
+10%,0.1,1.3929,6.4076,98.0,12.3848,16.6628,1.151,6.2386,97.0,10.0214,13.371

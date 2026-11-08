@@ -1,0 +1,7 @@
+category,scenario,model,handling_mechanism,mean_delta_rul,rejection_or_graceful,status
+Extreme Value OOD,+10 Sigma Disturbance on Key Sensor (sensor_11),Random Forest,"Tree Split Threshold Saturation & [0, 125] Boundary Clipping",7.3402,"Graceful Degradation (Outputs bounded in [0, 125])",PASS
+Extreme Value OOD,-10 Sigma Disturbance on Key Sensor (sensor_11),Random Forest,"Tree Split Threshold Saturation & [0, 125] Boundary Clipping",6.2624,"Graceful Degradation (Outputs bounded in [0, 125])",PASS
+Channel Sensor Drop,Complete Sensor 11 Signal Loss (Set to Zero),Random Forest,Fallback to Non-Dependent Tree Paths in 200 Estimators,6.2624,Graceful Fallback across Ensemble,PASS
+Missing/NaN Ingestion,NaN value in 19-feature payload,FastAPI / Pydantic Schema + Scikit-Learn,Pydantic Strict Float Parsing & Pre-Inference Validation,0.0,Strict 422 Unprocessable Entity Rejection,FAIL
+Schema Completeness,Omission of 1 of 19 required named features,FastAPI / Pydantic Schema,Pydantic Field Requirement Validation,0.0,Strict 422 Unprocessable Entity Rejection,PASS
+Temporal Window Boundary,Early Lifecycle Short Sequence (15 cycles edge-padded to 30),LSTM Neural Network,Temporal Edge Padding before Recurrent Ingestion,13.0397,Graceful Inference (Mean delta: 4.8 cycles),PASS

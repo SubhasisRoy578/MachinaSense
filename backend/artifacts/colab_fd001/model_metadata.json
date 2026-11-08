@@ -1,0 +1,30 @@
+{
+    "model_name": "MachinaSense Random Forest RUL Predictor",
+    "algorithm": "RandomForestRegressor",
+    "dataset": "NASA C-MAPSS FD001",
+    "target": "RUL",
+    "rul_cap": 125,
+    "features": [
+        "cycle",
+        "op_setting_1",
+        "op_setting_2",
+        "op_setting_3",
+        "sensor_2",
+        "sensor_3",
+        "sensor_4",
+        "sensor_6",
+        "sensor_7",
+        "sensor_8",
+        "sensor_9",
+        "sensor_11",
+        "sensor_12",
+        "sensor_13",
+        "sensor_14",
+        "sensor_15",
+        "sensor_17",
+        "sensor_20",
+        "sensor_21"
+    ],
+    "n_features": 19,
+    "random_state": 42
+}

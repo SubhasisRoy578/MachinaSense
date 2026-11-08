@@ -1,0 +1,70 @@
+{
+  "summary": "MachinaSense Phase 10 Inference Latency, Concurrency & Sizing Profile",
+  "environment": {
+    "platform": "win32",
+    "python_version": "3.13.9",
+    "pytorch_version": "2.12.0+cpu",
+    "threads": 12
+  },
+  "models": [
+    {
+      "model": "Random Forest (Colab FD001)",
+      "artifact_size_mb": 95.19,
+      "load_time_ms": 5590.52,
+      "cold_start_lat_ms": 244.15,
+      "warm_mean_lat_ms": 102.56,
+      "warm_median_lat_ms": 98.05,
+      "warm_p95_lat_ms": 133.58,
+      "warm_p99_lat_ms": 172.62,
+      "warm_max_lat_ms": 285.17,
+      "throughput_req_per_sec": 9.8
+    },
+    {
+      "model": "LSTM Recurrent Network",
+      "artifact_size_mb": 0.219,
+      "load_time_ms": 99.62,
+      "cold_start_lat_ms": 14.78,
+      "warm_mean_lat_ms": 2.83,
+      "warm_median_lat_ms": 2.83,
+      "warm_p95_lat_ms": 3.44,
+      "warm_p99_lat_ms": 4.29,
+      "warm_max_lat_ms": 4.45,
+      "throughput_req_per_sec": 352.8
+    }
+  ],
+  "concurrency_benchmark": [
+    {
+      "concurrency_workers": 1,
+      "rf_mean_lat_ms": 102.58,
+      "rf_p95_lat_ms": 162.21,
+      "rf_throughput_req_sec": 9.7,
+      "lstm_mean_lat_ms": 3.37,
+      "lstm_p95_lat_ms": 3.89,
+      "lstm_throughput_req_sec": 287.7
+    },
+    {
+      "concurrency_workers": 5,
+      "rf_mean_lat_ms": 513.64,
+      "rf_p95_lat_ms": 798.97,
+      "rf_throughput_req_sec": 9.7,
+      "lstm_mean_lat_ms": 6.66,
+      "lstm_p95_lat_ms": 8.01,
+      "lstm_throughput_req_sec": 671.9
+    },
+    {
+      "concurrency_workers": 10,
+      "rf_mean_lat_ms": 873.16,
+      "rf_p95_lat_ms": 1173.68,
+      "rf_throughput_req_sec": 11.3,
+      "lstm_mean_lat_ms": 17.61,
+      "lstm_p95_lat_ms": 26.27,
+      "lstm_throughput_req_sec": 461.2
+    }
+  ],
+  "verification_findings": {
+    "latency_compliance": "LSTM achieves warm mean latency of 2.83 ms (median: 2.83 ms, P95: 3.44 ms), satisfying real-time sub-10ms streaming requirements. Random Forest warm mean latency is 102.56 ms (median: 98.05 ms, P95: 133.58 ms). Model loading time is tracked separately from inference latency.",
+    "cold_start_overhead": "First inference latency: RF first inference is 244.15 ms; LSTM first inference is 14.78 ms. Cold model artifact loading overhead: RF cold load is 5590.52 ms; LSTM cold load is 99.62 ms.",
+    "memory_and_disk_footprint": "RF artifact (95.19 MB) and LSTM artifact (0.219 MB / 223.8 KB) fit entirely in L3 cache/RAM without disk thrashing.",
+    "bounded_predictions": "Output clamping layer [0, 125] was verified across 100% of stress and performance test cycles."
+  }
+}

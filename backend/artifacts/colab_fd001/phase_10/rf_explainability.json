@@ -1,0 +1,851 @@
+{
+  "model_name": "MachinaSense Random Forest RUL Predictor",
+  "algorithm": "RandomForestRegressor (200 Estimators)",
+  "feature_count": 19,
+  "explanation_methods": [
+    "Gini Impurity (Mean Decrease in Impurity)",
+    "Permutation Feature Importance on Official Test Set (30 repeats)",
+    "Local Feature Perturbation Sensitivity (Delta RUL on +/- 5% disturbance)"
+  ],
+  "top_5_global_features_gini": [
+    {
+      "feature": "cycle",
+      "gini_importance": 0.21016628733891468,
+      "importance_percentage": 21.016628733891462,
+      "rank": 1
+    },
+    {
+      "feature": "sensor_11",
+      "gini_importance": 0.14845389962115993,
+      "importance_percentage": 14.84538996211599,
+      "rank": 2
+    },
+    {
+      "feature": "sensor_4",
+      "gini_importance": 0.13894935683663318,
+      "importance_percentage": 13.894935683663315,
+      "rank": 3
+    },
+    {
+      "feature": "sensor_12",
+      "gini_importance": 0.08941479942976753,
+      "importance_percentage": 8.941479942976752,
+      "rank": 4
+    },
+    {
+      "feature": "sensor_7",
+      "gini_importance": 0.07502199402079508,
+      "importance_percentage": 7.502199402079507,
+      "rank": 5
+    }
+  ],
+  "top_5_global_features_permutation": [
+    {
+      "feature": "cycle",
+      "mae_increase_when_permuted": 3.9708576153938653,
+      "std_deviation": 0.9780169117558553,
+      "rank": 1
+    },
+    {
+      "feature": "sensor_11",
+      "mae_increase_when_permuted": 2.5417152006465726,
+      "std_deviation": 0.43503559182004287,
+      "rank": 2
+    },
+    {
+      "feature": "sensor_9",
+      "mae_increase_when_permuted": 2.0079477127825838,
+      "std_deviation": 0.5422640031466603,
+      "rank": 3
+    },
+    {
+      "feature": "sensor_14",
+      "mae_increase_when_permuted": 1.7175524549015777,
+      "std_deviation": 0.4709489056102601,
+      "rank": 4
+    },
+    {
+      "feature": "sensor_4",
+      "mae_increase_when_permuted": 1.535597919460167,
+      "std_deviation": 0.29717779042145265,
+      "rank": 5
+    }
+  ],
+  "sample_engine_explanations": [
+    {
+      "engine_id": 1,
+      "final_observed_cycle": 31,
+      "actual_rul": 112.0,
+      "predicted_rul": 122.73,
+      "residual": 10.73,
+      "top_5_contributing_features": [
+        {
+          "feature": "sensor_14",
+          "baseline_value": 8130.11,
+          "sensitivity_cycles_per_5pct": 6.7379,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_9",
+          "baseline_value": 9056.4,
+          "sensitivity_cycles_per_5pct": 6.5584,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_11",
+          "baseline_value": 47.23,
+          "sensitivity_cycles_per_5pct": 3.1334,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1398.91,
+          "sensitivity_cycles_per_5pct": 1.6077,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_21",
+          "baseline_value": 23.3552,
+          "sensitivity_cycles_per_5pct": 1.5758,
+          "effect_direction": "negative"
+        }
+      ],
+      "all_feature_impacts": [
+        {
+          "feature": "cycle",
+          "baseline_value": 31.0,
+          "sensitivity_cycles_per_5pct": 0.029,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_1",
+          "baseline_value": -0.0006,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "op_setting_2",
+          "baseline_value": 0.0004,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_3",
+          "baseline_value": 100.0,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_2",
+          "baseline_value": 642.58,
+          "sensitivity_cycles_per_5pct": 1.0896,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_3",
+          "baseline_value": 1581.22,
+          "sensitivity_cycles_per_5pct": 0.5598,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1398.91,
+          "sensitivity_cycles_per_5pct": 1.6077,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_6",
+          "baseline_value": 21.61,
+          "sensitivity_cycles_per_5pct": 0.1302,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 554.42,
+          "sensitivity_cycles_per_5pct": 0.6562,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_8",
+          "baseline_value": 2388.08,
+          "sensitivity_cycles_per_5pct": 0.981,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_9",
+          "baseline_value": 9056.4,
+          "sensitivity_cycles_per_5pct": 6.5584,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_11",
+          "baseline_value": 47.23,
+          "sensitivity_cycles_per_5pct": 3.1334,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_12",
+          "baseline_value": 521.79,
+          "sensitivity_cycles_per_5pct": 1.5491,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_13",
+          "baseline_value": 2388.06,
+          "sensitivity_cycles_per_5pct": 0.3782,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_14",
+          "baseline_value": 8130.11,
+          "sensitivity_cycles_per_5pct": 6.7379,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_15",
+          "baseline_value": 8.4024,
+          "sensitivity_cycles_per_5pct": 0.952,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_17",
+          "baseline_value": 393.0,
+          "sensitivity_cycles_per_5pct": 0.2514,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_20",
+          "baseline_value": 38.81,
+          "sensitivity_cycles_per_5pct": 1.2012,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_21",
+          "baseline_value": 23.3552,
+          "sensitivity_cycles_per_5pct": 1.5758,
+          "effect_direction": "negative"
+        }
+      ]
+    },
+    {
+      "engine_id": 34,
+      "final_observed_cycle": 203,
+      "actual_rul": 7.0,
+      "predicted_rul": 7.0,
+      "residual": -0.0,
+      "top_5_contributing_features": [
+        {
+          "feature": "sensor_11",
+          "baseline_value": 48.13,
+          "sensitivity_cycles_per_5pct": 9.4176,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_12",
+          "baseline_value": 519.44,
+          "sensitivity_cycles_per_5pct": 6.5146,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1427.49,
+          "sensitivity_cycles_per_5pct": 5.6314,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 551.77,
+          "sensitivity_cycles_per_5pct": 4.1445,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_2",
+          "baseline_value": 643.74,
+          "sensitivity_cycles_per_5pct": 2.7707,
+          "effect_direction": "negative"
+        }
+      ],
+      "all_feature_impacts": [
+        {
+          "feature": "cycle",
+          "baseline_value": 203.0,
+          "sensitivity_cycles_per_5pct": 0.1047,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "op_setting_1",
+          "baseline_value": -0.0011,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "op_setting_2",
+          "baseline_value": -0.0001,
+          "sensitivity_cycles_per_5pct": 0.1276,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_3",
+          "baseline_value": 100.0,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_2",
+          "baseline_value": 643.74,
+          "sensitivity_cycles_per_5pct": 2.7707,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_3",
+          "baseline_value": 1600.38,
+          "sensitivity_cycles_per_5pct": 0.2027,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1427.49,
+          "sensitivity_cycles_per_5pct": 5.6314,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_6",
+          "baseline_value": 21.61,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 551.77,
+          "sensitivity_cycles_per_5pct": 4.1445,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_8",
+          "baseline_value": 2388.29,
+          "sensitivity_cycles_per_5pct": 0.4889,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_9",
+          "baseline_value": 9036.27,
+          "sensitivity_cycles_per_5pct": 0.8078,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_11",
+          "baseline_value": 48.13,
+          "sensitivity_cycles_per_5pct": 9.4176,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_12",
+          "baseline_value": 519.44,
+          "sensitivity_cycles_per_5pct": 6.5146,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_13",
+          "baseline_value": 2388.25,
+          "sensitivity_cycles_per_5pct": 0.7622,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_14",
+          "baseline_value": 8122.11,
+          "sensitivity_cycles_per_5pct": 0.6103,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_15",
+          "baseline_value": 8.5158,
+          "sensitivity_cycles_per_5pct": 2.3512,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_17",
+          "baseline_value": 397.0,
+          "sensitivity_cycles_per_5pct": 0.6381,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_20",
+          "baseline_value": 38.62,
+          "sensitivity_cycles_per_5pct": 2.2521,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_21",
+          "baseline_value": 23.0641,
+          "sensitivity_cycles_per_5pct": 2.3012,
+          "effect_direction": "positive"
+        }
+      ]
+    },
+    {
+      "engine_id": 45,
+      "final_observed_cycle": 152,
+      "actual_rul": 114.0,
+      "predicted_rul": 68.81,
+      "residual": -45.19,
+      "top_5_contributing_features": [
+        {
+          "feature": "sensor_9",
+          "baseline_value": 9067.31,
+          "sensitivity_cycles_per_5pct": 9.6251,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_11",
+          "baseline_value": 47.57,
+          "sensitivity_cycles_per_5pct": 7.65,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_14",
+          "baseline_value": 8140.56,
+          "sensitivity_cycles_per_5pct": 7.2528,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 553.2,
+          "sensitivity_cycles_per_5pct": 5.8366,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1410.33,
+          "sensitivity_cycles_per_5pct": 5.4152,
+          "effect_direction": "negative"
+        }
+      ],
+      "all_feature_impacts": [
+        {
+          "feature": "cycle",
+          "baseline_value": 152.0,
+          "sensitivity_cycles_per_5pct": 0.4165,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "op_setting_1",
+          "baseline_value": 0.0044,
+          "sensitivity_cycles_per_5pct": 0.1731,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_2",
+          "baseline_value": 0.0002,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_3",
+          "baseline_value": 100.0,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_2",
+          "baseline_value": 642.75,
+          "sensitivity_cycles_per_5pct": 4.102,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_3",
+          "baseline_value": 1598.59,
+          "sensitivity_cycles_per_5pct": 2.9745,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1410.33,
+          "sensitivity_cycles_per_5pct": 5.4152,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_6",
+          "baseline_value": 21.61,
+          "sensitivity_cycles_per_5pct": 0.1456,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 553.2,
+          "sensitivity_cycles_per_5pct": 5.8366,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_8",
+          "baseline_value": 2388.15,
+          "sensitivity_cycles_per_5pct": 4.5242,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_9",
+          "baseline_value": 9067.31,
+          "sensitivity_cycles_per_5pct": 9.6251,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_11",
+          "baseline_value": 47.57,
+          "sensitivity_cycles_per_5pct": 7.65,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_12",
+          "baseline_value": 520.76,
+          "sensitivity_cycles_per_5pct": 4.8346,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_13",
+          "baseline_value": 2388.15,
+          "sensitivity_cycles_per_5pct": 2.4987,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_14",
+          "baseline_value": 8140.56,
+          "sensitivity_cycles_per_5pct": 7.2528,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_15",
+          "baseline_value": 8.4695,
+          "sensitivity_cycles_per_5pct": 2.641,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_17",
+          "baseline_value": 394.0,
+          "sensitivity_cycles_per_5pct": 1.5868,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_20",
+          "baseline_value": 38.58,
+          "sensitivity_cycles_per_5pct": 3.3671,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_21",
+          "baseline_value": 23.312,
+          "sensitivity_cycles_per_5pct": 3.3059,
+          "effect_direction": "positive"
+        }
+      ]
+    },
+    {
+      "engine_id": 77,
+      "final_observed_cycle": 162,
+      "actual_rul": 34.0,
+      "predicted_rul": 34.44,
+      "residual": 0.44,
+      "top_5_contributing_features": [
+        {
+          "feature": "sensor_11",
+          "baseline_value": 47.81,
+          "sensitivity_cycles_per_5pct": 10.908,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1418.62,
+          "sensitivity_cycles_per_5pct": 7.8222,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_12",
+          "baseline_value": 520.16,
+          "sensitivity_cycles_per_5pct": 7.5133,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_21",
+          "baseline_value": 23.1712,
+          "sensitivity_cycles_per_5pct": 5.8163,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 552.24,
+          "sensitivity_cycles_per_5pct": 4.6457,
+          "effect_direction": "positive"
+        }
+      ],
+      "all_feature_impacts": [
+        {
+          "feature": "cycle",
+          "baseline_value": 162.0,
+          "sensitivity_cycles_per_5pct": 0.1425,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_1",
+          "baseline_value": -0.0027,
+          "sensitivity_cycles_per_5pct": 0.1049,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "op_setting_2",
+          "baseline_value": 0.0003,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_3",
+          "baseline_value": 100.0,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_2",
+          "baseline_value": 642.79,
+          "sensitivity_cycles_per_5pct": 2.0198,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_3",
+          "baseline_value": 1593.81,
+          "sensitivity_cycles_per_5pct": 1.356,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1418.62,
+          "sensitivity_cycles_per_5pct": 7.8222,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_6",
+          "baseline_value": 21.61,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 552.24,
+          "sensitivity_cycles_per_5pct": 4.6457,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_8",
+          "baseline_value": 2388.25,
+          "sensitivity_cycles_per_5pct": 2.7161,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_9",
+          "baseline_value": 9045.43,
+          "sensitivity_cycles_per_5pct": 3.3696,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_11",
+          "baseline_value": 47.81,
+          "sensitivity_cycles_per_5pct": 10.908,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_12",
+          "baseline_value": 520.16,
+          "sensitivity_cycles_per_5pct": 7.5133,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_13",
+          "baseline_value": 2388.21,
+          "sensitivity_cycles_per_5pct": 1.9594,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_14",
+          "baseline_value": 8128.16,
+          "sensitivity_cycles_per_5pct": 1.8561,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_15",
+          "baseline_value": 8.4543,
+          "sensitivity_cycles_per_5pct": 2.5801,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_17",
+          "baseline_value": 396.0,
+          "sensitivity_cycles_per_5pct": 1.8345,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_20",
+          "baseline_value": 38.75,
+          "sensitivity_cycles_per_5pct": 4.0928,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_21",
+          "baseline_value": 23.1712,
+          "sensitivity_cycles_per_5pct": 5.8163,
+          "effect_direction": "positive"
+        }
+      ]
+    },
+    {
+      "engine_id": 82,
+      "final_observed_cycle": 162,
+      "actual_rul": 9.0,
+      "predicted_rul": 9.05,
+      "residual": 0.05,
+      "top_5_contributing_features": [
+        {
+          "feature": "sensor_11",
+          "baseline_value": 48.08,
+          "sensitivity_cycles_per_5pct": 9.8301,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_12",
+          "baseline_value": 520.02,
+          "sensitivity_cycles_per_5pct": 6.4119,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1427.69,
+          "sensitivity_cycles_per_5pct": 5.4234,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 551.15,
+          "sensitivity_cycles_per_5pct": 5.3374,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_2",
+          "baseline_value": 643.57,
+          "sensitivity_cycles_per_5pct": 2.8779,
+          "effect_direction": "negative"
+        }
+      ],
+      "all_feature_impacts": [
+        {
+          "feature": "cycle",
+          "baseline_value": 162.0,
+          "sensitivity_cycles_per_5pct": 0.0246,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_1",
+          "baseline_value": -0.0016,
+          "sensitivity_cycles_per_5pct": 0.0125,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_2",
+          "baseline_value": 0.0,
+          "sensitivity_cycles_per_5pct": 0.2638,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "op_setting_3",
+          "baseline_value": 100.0,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_2",
+          "baseline_value": 643.57,
+          "sensitivity_cycles_per_5pct": 2.8779,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_3",
+          "baseline_value": 1597.99,
+          "sensitivity_cycles_per_5pct": 1.0176,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_4",
+          "baseline_value": 1427.69,
+          "sensitivity_cycles_per_5pct": 5.4234,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_6",
+          "baseline_value": 21.61,
+          "sensitivity_cycles_per_5pct": 0.0,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_7",
+          "baseline_value": 551.15,
+          "sensitivity_cycles_per_5pct": 5.3374,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_8",
+          "baseline_value": 2388.2,
+          "sensitivity_cycles_per_5pct": 1.2769,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_9",
+          "baseline_value": 9058.64,
+          "sensitivity_cycles_per_5pct": 1.4193,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_11",
+          "baseline_value": 48.08,
+          "sensitivity_cycles_per_5pct": 9.8301,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_12",
+          "baseline_value": 520.02,
+          "sensitivity_cycles_per_5pct": 6.4119,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_13",
+          "baseline_value": 2388.29,
+          "sensitivity_cycles_per_5pct": 0.8546,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_14",
+          "baseline_value": 8126.2,
+          "sensitivity_cycles_per_5pct": 0.7108,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_15",
+          "baseline_value": 8.5028,
+          "sensitivity_cycles_per_5pct": 2.7937,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_17",
+          "baseline_value": 397.0,
+          "sensitivity_cycles_per_5pct": 0.9223,
+          "effect_direction": "negative"
+        },
+        {
+          "feature": "sensor_20",
+          "baseline_value": 38.62,
+          "sensitivity_cycles_per_5pct": 1.944,
+          "effect_direction": "positive"
+        },
+        {
+          "feature": "sensor_21",
+          "baseline_value": 23.1211,
+          "sensitivity_cycles_per_5pct": 2.296,
+          "effect_direction": "positive"
+        }
+      ]
+    }
+  ]
+}

@@ -13,7 +13,7 @@ from app.auth.clerk import get_current_user
 from app.config import settings, validate_configuration
 from app.db.models import AnomalyEvent, CopilotConversation, CopilotMessage, DiagnosticCase, DocumentChunk, KnowledgeDoc, Machine, MaintenanceTask, Prediction, SensorReading, User, UserDataset, TrainingJobRecord, ModelRegistryRecord, ModelPredictionRecord
 from app.db.session import get_db, init_db, check_db_ping
-from app.ml_service import FEATURE_COLS, ml_service
+from app.ml_service import FEATURE_COLS, COLAB_FD001_FEATURE_ORDER, COLAB_ARTIFACTS_DIR, ml_service
 from app.rag.chunker import chunk_pages
 from app.rag.extractor import DocumentExtractionError, extract_text
 from app.services import (
@@ -281,6 +281,113 @@ def predict_rul(payload:dict,_:User=Depends(get_current_user)):
     if not ml_service.is_loaded:raise HTTPException(503,"ML models are unavailable.")
     frame=pd.DataFrame([values],columns=FEATURE_COLS);lstm=ml_service.predict_rul_raw(frame,use_lstm=True);rf=ml_service.predict_rul_raw(frame,use_lstm=False);mae=ml_service.evaluation.get("rul_models",{}).get("lstm",{}).get("mae",11.3)
     return {"predicted_rul":round(lstm,2),"rf_predicted_rul":round(rf,2),"model_used":"Random Forest Baseline","confidence_interval":{"min":max(0,lstm-mae),"max":lstm+mae}}
+@app.post("/api/predict/rul/fd001")
+def predict_rul_fd001(payload: dict, _: User = Depends(get_current_user)):
+    if not ml_service.is_colab_loaded or ml_service.rf_colab_model is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Colab FD001 RUL model is unavailable."
+        )
+
+    if not isinstance(payload, dict) or not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Request body must be a non-empty JSON object."
+        )
+
+    if "features" in payload and isinstance(payload["features"], dict):
+        raw_features = payload["features"]
+    elif "features" not in payload:
+        raw_features = payload
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Features must be provided as a dictionary of named features."
+        )
+
+    try:
+        pred_rul = ml_service.predict_rul_colab(raw_features)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except RuntimeError as re:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(re))
+
+    meta = ml_service.rf_colab_metadata
+    eval_metrics = ml_service.rf_colab_evaluation
+
+    return {
+        "predicted_rul": pred_rul,
+        "model_name": meta.get("model_name", "MachinaSense Random Forest RUL Predictor"),
+        "algorithm": meta.get("algorithm", "RandomForestRegressor"),
+        "dataset": meta.get("dataset", "NASA C-MAPSS FD001"),
+        "target": meta.get("target", "RUL"),
+        "rul_cap": meta.get("rul_cap", 125),
+        "evaluation": eval_metrics,
+        "features_used": meta.get("features", COLAB_FD001_FEATURE_ORDER),
+    }
+
+@app.get("/api/explainability/summary")
+def get_explainability_summary(_: User = Depends(get_current_user)):
+    phase_10_dir = os.path.join(COLAB_ARTIFACTS_DIR, "phase_10")
+    
+    rf_json_path = os.path.join(phase_10_dir, "rf_explainability.json")
+    lstm_json_path = os.path.join(phase_10_dir, "lstm_explainability.json")
+    robust_json_path = os.path.join(phase_10_dir, "robustness_summary.json")
+    perf_json_path = os.path.join(phase_10_dir, "inference_performance.json")
+    
+    rf_data = {}
+    if os.path.exists(rf_json_path):
+        with open(rf_json_path, "r", encoding="utf-8") as f:
+            rf_data = json.load(f)
+            
+    lstm_data = {}
+    if os.path.exists(lstm_json_path):
+        with open(lstm_json_path, "r", encoding="utf-8") as f:
+            lstm_data = json.load(f)
+            
+    robust_data = {}
+    if os.path.exists(robust_json_path):
+        with open(robust_json_path, "r", encoding="utf-8") as f:
+            robust_data = json.load(f)
+            
+    perf_data = {}
+    if os.path.exists(perf_json_path):
+        with open(perf_json_path, "r", encoding="utf-8") as f:
+            perf_data = json.load(f)
+            
+    return {
+        "status": "ready",
+        "models": {
+            "random_forest": rf_data,
+            "lstm": lstm_data
+        },
+        "robustness": robust_data,
+        "performance": perf_data
+    }
+
+@app.get("/api/explainability/engines")
+def get_explainability_engines(_: User = Depends(get_current_user)):
+    phase_10_dir = os.path.join(COLAB_ARTIFACTS_DIR, "phase_10")
+    
+    rf_json_path = os.path.join(phase_10_dir, "rf_explainability.json")
+    lstm_json_path = os.path.join(phase_10_dir, "lstm_explainability.json")
+    
+    rf_engines = []
+    if os.path.exists(rf_json_path):
+        with open(rf_json_path, "r", encoding="utf-8") as f:
+            rf_engines = json.load(f).get("sample_engine_explanations", [])
+            
+    lstm_engines = []
+    if os.path.exists(lstm_json_path):
+        with open(lstm_json_path, "r", encoding="utf-8") as f:
+            lstm_engines = json.load(f).get("sample_engine_explanations", [])
+            
+    return {
+        "status": "ready",
+        "sample_engine_ids": [1, 34, 45, 77, 82],
+        "random_forest_engines": rf_engines,
+        "lstm_engines": lstm_engines
+    }
 @app.post("/api/detect/anomaly")
 def detect_anomaly(payload:dict,_:User=Depends(get_current_user)):
     values=payload.get("features") or []

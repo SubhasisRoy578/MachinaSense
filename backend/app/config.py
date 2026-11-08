@@ -1,5 +1,8 @@
 import os
-from typing import List
+from typing import List, Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Settings:
     PROJECT_NAME: str = "MachinaSense Industrial Intelligence & Grounded RAG API"
@@ -13,10 +16,10 @@ class Settings:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
 
     # CORS configuration
-    _cors_env: str = os.getenv("CORS_ORIGINS", "")
+    _cors_env: Optional[str] = None
     @property
     def CORS_ORIGINS(self) -> List[str]:
-        raw = os.getenv("CORS_ORIGINS") or os.getenv("CORS_ORIGIN") or self._cors_env or ""
+        raw = self._cors_env if self._cors_env is not None else (os.getenv("CORS_ORIGINS") or os.getenv("CORS_ORIGIN") or "")
         if not raw:
             return ["http://localhost:5173", "http://localhost:3000"] if (self.ENVIRONMENT == "development") else ["https://machinasense.netlify.app"]
         origins = [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
@@ -30,17 +33,19 @@ class Settings:
         return origins
 
     # Database Configuration (PostgreSQL with SQLite local dev/test fallback)
-    _db_url: str = os.getenv("DATABASE_URL", "")
+    _db_url: Optional[str] = None
     @property
     def DATABASE_URL(self) -> str:
-        url = (
-            self._db_url
-            or os.getenv("DATABASE_URL")
-            or os.getenv("DATABASE_INTERNAL_URL")
-            or os.getenv("INTERNAL_DATABASE_URL")
-            or os.getenv("POSTGRES_URL")
-            or ""
-        )
+        if self._db_url is not None:
+            url = self._db_url
+        else:
+            url = (
+                os.getenv("DATABASE_URL")
+                or os.getenv("DATABASE_INTERNAL_URL")
+                or os.getenv("INTERNAL_DATABASE_URL")
+                or os.getenv("POSTGRES_URL")
+                or ""
+            )
         if not url:
             if self.ENVIRONMENT == "production":
                 raise RuntimeError("DATABASE_URL (or DATABASE_INTERNAL_URL) must be configured in production. Ephemeral SQLite fallback is not permitted in production mode.")
@@ -50,7 +55,7 @@ class Settings:
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
         if self.ENVIRONMENT == "production" and url.startswith("sqlite"):
-            raise RuntimeError("Production requires a PostgreSQL database, but SQLite URL was provided.")
+            raise RuntimeError("Production requires a PostgreSQL database, but SQLite URL was provided. SQLite fallback is not permitted in production.")
         return url
 
     # Clerk Authentication

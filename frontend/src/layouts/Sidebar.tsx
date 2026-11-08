@@ -25,6 +25,7 @@ const navigation = [
   { name: 'AI Diagnostics', to: '/diagnostics', icon: BrainCircuit },
   { name: 'Engineering Copilot', to: '/copilot', icon: BrainCircuit },
   { name: 'Model Training', to: '/model-training', icon: Layers },
+  { name: 'Explainability & Robustness', to: '/explainability', icon: BrainCircuit },
   { name: 'Knowledge Base', to: '/knowledge-base', icon: BookOpen },
   { name: 'Analytics', to: '/analytics', icon: BarChart2 },
 ];

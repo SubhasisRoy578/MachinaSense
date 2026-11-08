@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import math
 import joblib
 import torch
 import numpy as np
@@ -20,6 +21,30 @@ from ml.data.loader import load_cmapss_data, FEATURE_COLS, MAX_RUL, COLUMNS
 
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
 DATA_DIR = os.path.join(BASE_DIR, "ml", "data", "raw")
+COLAB_ARTIFACTS_DIR = os.path.join(ARTIFACTS_DIR, "colab_fd001")
+
+COLAB_FD001_FEATURE_ORDER = [
+    "cycle",
+    "op_setting_1",
+    "op_setting_2",
+    "op_setting_3",
+    "sensor_2",
+    "sensor_3",
+    "sensor_4",
+    "sensor_6",
+    "sensor_7",
+    "sensor_8",
+    "sensor_9",
+    "sensor_11",
+    "sensor_12",
+    "sensor_13",
+    "sensor_14",
+    "sensor_15",
+    "sensor_17",
+    "sensor_20",
+    "sensor_21",
+]
+
 
 SENSOR_NAMES_MAP = {
     's2': {'name': 'LPC Outlet Temp', 'unit': '°R', 'min': 640.0, 'max': 650.0},
@@ -48,6 +73,10 @@ class MLService:
         self.metadata: Dict[str, Any] = {}
         self.evaluation: Dict[str, Any] = {}
         self.is_loaded = False
+        self.rf_colab_model = None
+        self.rf_colab_metadata: Dict[str, Any] = {}
+        self.rf_colab_evaluation: Dict[str, Any] = {}
+        self.is_colab_loaded: bool = False
         
         self.test_df: Optional[pd.DataFrame] = None
         self.train_df: Optional[pd.DataFrame] = None
@@ -94,6 +123,29 @@ class MLService:
                 except Exception as dataset_err:
                     print(f"Warning loading CMAPSS raw dataset: {dataset_err}")
 
+            # Dedicated Colab FD001 model loading
+            try:
+                colab_rf_path = os.path.join(COLAB_ARTIFACTS_DIR, "rf_baseline.joblib")
+                colab_meta_path = os.path.join(COLAB_ARTIFACTS_DIR, "model_metadata.json")
+                colab_eval_path = os.path.join(COLAB_ARTIFACTS_DIR, "evaluation.json")
+                if os.path.exists(colab_rf_path):
+                    self.rf_colab_model = joblib.load(colab_rf_path)
+                    if os.path.exists(colab_meta_path):
+                        with open(colab_meta_path, "r", encoding="utf-8") as f:
+                            self.rf_colab_metadata = json.load(f)
+                    if os.path.exists(colab_eval_path):
+                        with open(colab_eval_path, "r", encoding="utf-8") as f:
+                            self.rf_colab_evaluation = json.load(f)
+                    self.is_colab_loaded = True
+                    print("MLService: Colab FD001 Random Forest model loaded successfully.")
+                else:
+                    print("MLService: Colab FD001 model artifact not found, skipping.")
+                    self.is_colab_loaded = False
+            except Exception as colab_err:
+                print(f"MLService: Error loading Colab FD001 model: {colab_err}")
+                self.rf_colab_model = None
+                self.is_colab_loaded = False
+
             self.is_loaded = True
             print("MLService successfully initialized and all artifacts loaded.")
             return True
@@ -101,6 +153,55 @@ class MLService:
             print(f"Error loading ML artifacts in MLService: {e}")
             self.is_loaded = False
             return False
+
+    def prepare_colab_fd001_features(self, features: Dict[str, Any]) -> pd.DataFrame:
+        """
+        Validates and prepares the 19 features required by the Colab-trained FD001 model.
+        Features must be provided as a dictionary of named feature keys.
+        Exact order:
+        cycle, op_setting_1, op_setting_2, op_setting_3,
+        sensor_2, sensor_3, sensor_4, sensor_6, sensor_7,
+        sensor_8, sensor_9, sensor_11, sensor_12, sensor_13,
+        sensor_14, sensor_15, sensor_17, sensor_20, sensor_21.
+
+        Rejects missing, null, non-numeric, or non-finite values (NaN, Inf).
+        Does NOT apply any scaler.
+        """
+        if not isinstance(features, dict):
+            raise ValueError(f"Features must be a dictionary of named feature keys, got {type(features).__name__}.")
+
+        missing = [col for col in COLAB_FD001_FEATURE_ORDER if col not in features]
+        if missing:
+            raise ValueError(f"Missing required feature columns: {', '.join(missing)}.")
+
+        clean_row = {}
+        for col in COLAB_FD001_FEATURE_ORDER:
+            val = features[col]
+            if val is None or isinstance(val, bool):
+                raise ValueError(f"Feature '{col}' must be a finite numerical value, got {type(val).__name__}.")
+            try:
+                num_val = float(val)
+            except (ValueError, TypeError):
+                raise ValueError(f"Feature '{col}' must be a numerical value, got {val!r}.")
+            if not math.isfinite(num_val):
+                raise ValueError(f"Feature '{col}' must be a finite numerical value, got {val!r}.")
+            clean_row[col] = num_val
+
+        return pd.DataFrame([clean_row], columns=COLAB_FD001_FEATURE_ORDER)
+
+    def predict_rul_colab(self, features: Dict[str, Any]) -> float:
+        """
+        Runs RUL prediction using the Colab-trained Random Forest model.
+        Raw features are validated and fed unscaled to the model.
+        Predicted RUL is bounded between 0 and 125.
+        """
+        if not self.is_colab_loaded or self.rf_colab_model is None:
+            raise RuntimeError("Colab FD001 model is not loaded or unavailable.")
+
+        prepared_df = self.prepare_colab_fd001_features(features)
+        raw_pred = float(self.rf_colab_model.predict(prepared_df)[0])
+        bounded_pred = max(0.0, min(125.0, raw_pred))
+        return round(bounded_pred, 2)
 
     def parse_machine_id(self, machine_id_str: str) -> Optional[int]:
         clean_str = str(machine_id_str).strip()

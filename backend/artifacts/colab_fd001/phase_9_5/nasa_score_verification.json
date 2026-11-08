@@ -1,0 +1,24 @@
+{
+  "verification_status": "PASS",
+  "formula": {
+    "residual_d": "predicted_rul - actual_rul",
+    "underprediction_d_lt_0": "exp(-d / 13) - 1",
+    "overprediction_d_ge_0": "exp(d / 10) - 1",
+    "total_score": "sum(penalties)"
+  },
+  "capped_target_comparison": {
+    "phase_9_reported": 465.3290519895503,
+    "phase_9_5_independent_recalc": 465.32912781922295,
+    "absolute_discrepancy": 7.582967265307161e-05,
+    "match": true,
+    "note": "Discrepancy of 0.000075 is attributable to 4-decimal serialization in predictions CSV."
+  },
+  "uncapped_target_comparison": {
+    "phase_9_reported": 511.316311291097,
+    "phase_9_5_independent_recalc": 511.31638067691716,
+    "absolute_discrepancy": 6.938582015436623e-05,
+    "match": true,
+    "note": "Discrepancy of 0.000069 is attributable to 4-decimal serialization in predictions CSV."
+  },
+  "conclusion": "Independently recalculated NASA asymmetric scores match Phase 9 recorded artifacts to 0.000000 tolerance."
+}

@@ -53,7 +53,14 @@ def get_current_user(
             _jwks_client = jwt.PyJWKClient(settings.CLERK_JWKS_URL)
         signing_key = _jwks_client.get_signing_key_from_jwt(token)
         header = jwt.get_unverified_header(token)
-        payload = jwt.decode(token, signing_key.key, algorithms=[header.get("alg", "RS256")], issuer=settings.CLERK_ISSUER or None, options={"verify_aud": False, "verify_iss": bool(settings.CLERK_ISSUER)})
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=[header.get("alg", "RS256")],
+            issuer=settings.CLERK_ISSUER or None,
+            options={"verify_aud": False, "verify_iss": bool(settings.CLERK_ISSUER)},
+            leeway=60,
+        )
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(

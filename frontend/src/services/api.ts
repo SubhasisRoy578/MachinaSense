@@ -1,7 +1,7 @@
 import type { Machine } from '../types/models';
 import type { Dataset, DatasetListItem, DatasetUploadResponse } from '../types/dataset';
 import type { TrainingConfig, TrainingJob, RegisteredModel, ModelVersion, RegisterModelPayload } from '../types/training';
-import type { SingleInferenceResponse, BatchInferenceResponse, PredictionHistoryRecord } from '../types/inference';
+import type { SingleInferenceResponse, BatchInferenceResponse, PredictionHistoryRecord, FD001PredictionResponse, FD001Features } from '../types/inference';
 import type { GlobalExplanationResponse, LocalExplanationResponse } from '../types/explainability';
 import type { ModelComparisonResponse, ModelEvaluationHistoryResponse } from '../types/comparison';
 import type { DecisionSupportResponse } from '../types/decisionSupport';
@@ -234,6 +234,11 @@ export const api = {
       request(`/api/models/active/${encodeURIComponent(task)}`),
   },
   inference: {
+    predictFd001: async (features: FD001Features | Record<string, number>): Promise<FD001PredictionResponse> =>
+      request<FD001PredictionResponse>('/api/predict/rul/fd001', {
+        method: 'POST',
+        body: JSON.stringify({ features }),
+      }),
     predictRul: async (features: Record<string, any>): Promise<SingleInferenceResponse<{ rul_cycles: number }>> =>
       request('/api/inference/rul', {
         method: 'POST',
@@ -288,6 +293,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ features }),
       }),
+    getPhase10Summary: async (): Promise<any> =>
+      request('/api/explainability/summary'),
+    getPhase10Engines: async (): Promise<any> =>
+      request('/api/explainability/engines'),
   },
   comparison: {
     compare: async (modelIds: string[], task?: string): Promise<ModelComparisonResponse> =>

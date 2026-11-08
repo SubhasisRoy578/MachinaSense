@@ -1,0 +1,7 @@
+model_name,target_type,MAE,RMSE,R2,median_absolute_error,maximum_absolute_error,mean_bias,NASA_asymmetric_score,overpredicted_count,underpredicted_count,exact_count
+"Random Forest (Colab FD001, 19 Features)",Capped (<=125),12.2143,16.5587,0.8293,9.1123,45.1924,0.6216,465.3291,55,45,0
+"LSTM Neural Network (30-Cycle Window, 15 Features)",Capped (<=125),10.2305,13.6405,0.8841,8.4796,42.5092,3.6184,358.211,61,39,0
+Random Forest Benchmark (Original 15 Scaled Features),Capped (<=125),12.1502,17.1521,0.8168,7.9654,51.4607,4.2746,892.3693,58,42,0
+"Random Forest (Colab FD001, 19 Features)",Uncapped (Raw Ground Truth),13.2843,17.7557,0.8174,10.1678,45.1924,-0.4484,511.3163,55,45,0
+"LSTM Neural Network (30-Cycle Window, 15 Features)",Uncapped (Raw Ground Truth),11.3005,15.0027,0.8697,9.1577,42.5092,2.5484,401.052,61,39,0
+Random Forest Benchmark (Original 15 Scaled Features),Uncapped (Raw Ground Truth),13.2202,18.103,0.8102,9.7163,51.4607,3.2046,923.1043,58,42,0

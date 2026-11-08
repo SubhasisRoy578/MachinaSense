@@ -3,6 +3,9 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  VITE_API_BASE_URL = "https://machinasense-backend.onrender.com"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
